@@ -23,8 +23,7 @@ def getOriThetas(rts, coorA, coorB, shape1, shape2):
 
     mtxs = []  # save crop thetas
     for rt in rts:
-        # mtxs.append(composeMatrixFromDegree(rt, False))
-        mtxs.append(composeMatrixFromDegree(rt, True))
+        mtxs.append(composeMatrixFromDegree(rt))
 
     mtx_revises = []
     for mtx in mtxs:
@@ -94,7 +93,8 @@ def validation(filenum, net_mode="test", ifsave=False):
         warped = imgB_ori_tensor
         for i, (stem_result, theta_o, stem_result_gt) in enumerate(
                 zip(stem_results, thetas_ori, stem_results_gt)):
-            warped_gt = stem_result.squeeze(0).squeeze(0).cpu().detach()
+            warped_gt = (stem_result *
+                         stem_result_gt).squeeze(0).squeeze(0).cpu().detach()
             saveNiiImage(
                 warped_gt.numpy(), infos,
                 save_name.replace(".nii.gz", f"_crop_{nums}{i+1}.nii.gz"))
@@ -121,4 +121,4 @@ if __name__ == "__main__":
     # for filenum in range(15, 16):
     #     validation(filenum, net_mode="test", ifsave=False)
 
-    validation(231, net_mode="train", ifsave=True)
+    validation(236, net_mode="train", ifsave=True)

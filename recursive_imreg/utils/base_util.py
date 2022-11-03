@@ -2,6 +2,8 @@ import os
 import json
 import numpy as np
 import SimpleITK as sitk
+import torch
+import torch.nn.functional as F
 
 
 def getImageDirs(root_dir):
