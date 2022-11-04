@@ -20,9 +20,9 @@ def train(model, epoch, train_iter, loss_dict, scheduler, optimizer):
         imgA, imgB, = imgA.to(device), imgB.to(device)
         imgA_gt, imgB_gt = imgA_gt.to(device), imgB_gt.to(device)
         warped, flows, warped_gt = model(imgA, imgB, imgA_gt, imgB_gt)
-        log.info(flows)
-        # if i % 5 == 0:
-        #     print(flows)
+        # log.info(flows)
+        if i % 5 == 0:
+            print(flows)
         # loss_BA = losses.pearson_correlation(imgA, warped[-1])
         loss_BA = losses.pearson_correlation(imgA * imgA_gt,
                                              warped[-1] * warped_gt[-1])
@@ -51,8 +51,7 @@ def validation(model, epoch, test_iter, loss_dict):
         # for i, (imgA, imgB, filedir) in enumerate(test_iter):
         #     imgA, imgB = imgA.to(device), imgB.to(device)
         #     warped, flows = model(imgA, imgB)
-        for i, (imgA, imgB, imgA_gt, imgB_gt,
-                filedir) in enumerate(train_iter):
+        for i, (imgA, imgB, imgA_gt, imgB_gt, filedir) in enumerate(test_iter):
             imgA, imgB, = imgA.to(device), imgB.to(device)
             imgA_gt, imgB_gt = imgA_gt.to(device), imgB_gt.to(device)
             warped, flows, warped_gt = model(imgA, imgB, imgA_gt, imgB_gt)
@@ -87,11 +86,9 @@ def main(loadpth=None):
 
     if loadpth is None:
         log.info(conf.getinfo())
-        optimizer = Adam(trainable_params, lr=conf.lr)  # , betas=(0.5, 0.999)
-        # optimizer = RMSprop(trainable_params, lr=conf.lr)
-        # optimizer = SGD(trainable_params, conf.lr, momentum=0.9)
-        # scheduler = lr_scheduler.StepLR(optimizer, conf.step_size, conf.gamma)
-        scheduler = lr_scheduler.CosineAnnealingWarmRestarts(optimizer, 2, 5)
+        optimizer = Adam(trainable_params, lr=conf.lr, betas=(0.5, 0.999))
+        scheduler = lr_scheduler.StepLR(optimizer, conf.step_size, conf.gamma)
+        # scheduler = lr_scheduler.CosineAnnealingWarmRestarts(optimizer, 2, 5)
     else:
         dic = torch.load(loadpth)
         start_epoch = dic["epoch"]
@@ -125,8 +122,6 @@ def main(loadpth=None):
         infos["optim"] = optimizer
         if test_loss < minloss:
             minloss = test_loss
-        # if train_loss < minloss:
-        #     minloss = train_loss
             infos["loss"] = minloss
             torch.save(infos, bestpth_name)
             log.info(
@@ -143,7 +138,7 @@ def main(loadpth=None):
 if __name__ == "__main__":
 
     base_path = os.path.join(os.getcwd(), conf.save_name)
-    result_path = os.path.join(base_path, "num5")
+    result_path = os.path.join(base_path, "all")
     os.makedirs(result_path, exist_ok=True)
 
     log = Log(filename=os.path.join(result_path, "train.log"),
@@ -151,7 +146,7 @@ if __name__ == "__main__":
     bestpth_name = os.path.join(result_path, f"best_{conf.save_name}.pth")
     device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
 
-    root_dir = os.path.join(conf.root_path, "traindata")
+    root_dir = os.path.join(conf.root_path, "testdata")  # testdata traindata
     train_iter, test_iter = dataloads.getDataloader(root_dir)
 
     loadpth = None

@@ -104,7 +104,7 @@ def getDatas(root_dir, pool_size=12):
         X_train_imgs = suf_images[:2]
         X_test_imgs = suf_images[2:]
     elif "test" in root_dir:
-        r = loadJson("files/train_coordinate.json")
+        r = loadJson("files/test_coordinate.json")
         X_train_imgs = image_dirs[:36]
         X_test_imgs = image_dirs[36:]
     else:
@@ -164,4 +164,4 @@ def getDataloader(root_dir):
 
 
 if __name__ == "__main__":
-    a, b = getDataloader(os.path.join(conf.root_path, "traindata"))
+    a, b = getDataloader(os.path.join(conf.root_path, "testdata"))
