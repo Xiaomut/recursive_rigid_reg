@@ -6,7 +6,7 @@ from log import Log
 from utils.image_util import invMatrix, decomposeMatrixDegree, composeMatrixFromDegree, reviseMtxFromCrop, cropImageByPoint, processOutPt
 from utils.base_util import readNiiImage, saveNiiImage, loadJson, resampleNiiImg
 from config import Config as conf
-from models import recurnet, recurnet_4img
+from models.recurnet_4img import RecursiveCascadeNetwork
 
 
 def getOriThetas(rts, coorA, coorB, shape1, shape2):
@@ -19,7 +19,7 @@ def getOriThetas(rts, coorA, coorB, shape1, shape2):
         [0, 0, 0, t[2]],
     ])
 
-    rts = [theta.cpu().detach().numpy() for theta in rts]
+    rts = [theta.detach() for theta in rts]
 
     mtxs = []  # save crop thetas
     for rt in rts:
@@ -80,12 +80,12 @@ def validation(filenum, net_mode="test", ifsave=False):
     imgB_gt_tensor = torch.FloatTensor(imgB_gt_crop).unsqueeze(0).unsqueeze(0)
 
     imgA_tensor, imgB_tensor = imgA_tensor.to(device), imgB_tensor.to(device)
-    imgA_gt_tensor, imgB_gt_tensor = imgA_gt_tensor.to(
-        device), imgB_gt_tensor.to(device)
+    imgA_gt_tensor = imgA_gt_tensor.to(device)
+    imgB_gt_tensor = imgB_gt_tensor.to(device)
 
     stem_results, thetas, stem_results_gt = net(imgA_tensor, imgB_tensor,
                                                 imgA_gt_tensor, imgB_gt_tensor)
-    log.info(np.asarray([theta.cpu().detach().numpy() for theta in thetas]))
+    log.info([theta.detach() for theta in thetas])
     save_name = os.path.join(base_dir, resample_name)
     if ifsave:
         thetas_ori = getOriThetas(thetas, coorA, coorB, imgA.shape,
@@ -93,6 +93,7 @@ def validation(filenum, net_mode="test", ifsave=False):
         warped = imgB_ori_tensor
         for i, (stem_result, theta_o, stem_result_gt) in enumerate(
                 zip(stem_results, thetas_ori, stem_results_gt)):
+            # 需要将其相乘进行存储
             warped_gt = (stem_result *
                          stem_result_gt).squeeze(0).squeeze(0).cpu().detach()
             saveNiiImage(
@@ -106,19 +107,18 @@ def validation(filenum, net_mode="test", ifsave=False):
 if __name__ == "__main__":
 
     nums = conf.n_cascades
-    model_path = "recurse/num5/best_recurse.pth"
+    model_path = "recurse/num2/best_recurse.pth"
     state_dict = torch.load(model_path, map_location="cpu")
 
     device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
-    net = recurnet_4img.RecursiveCascadeNetwork(nums, conf.channel, device,
-                                                state_dict, True)
+    net = RecursiveCascadeNetwork(nums, conf.channel, device, state_dict, True)
 
     log = Log(filename=f"{conf.save_name}/valid/validation.log",
               mode="a").getlog()
-
+    log.info(f"------- {model_path} -------")
     resample_name = f"warped_{conf.save_name}.nii.gz"
 
     # for filenum in range(15, 16):
     #     validation(filenum, net_mode="test", ifsave=False)
 
-    validation(236, net_mode="train", ifsave=True)
+    validation(232, net_mode="train", ifsave=True)

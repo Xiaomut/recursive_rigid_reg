@@ -5,7 +5,7 @@ import sys
 
 sys.path.append("../")
 sys.path.append("./")
-from models import base_network_4img
+from models.base_network_4img import VTNAffineStem
 
 
 class SpatialTransform(nn.Module):
@@ -78,7 +78,7 @@ class RecursiveCascadeNetwork(nn.Module):
         self.stems = []
         # See note in base_networks.py about the assumption in the image shape
         for i in range(n_cascades):
-            self.stems.append(base_network_4img.VTNAffineStem(channels=midch))
+            self.stems.append(VTNAffineStem(channels=midch))
 
         for model in self.stems:
             model.to(device)
