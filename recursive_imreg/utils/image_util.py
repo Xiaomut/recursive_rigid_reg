@@ -67,35 +67,69 @@ def decomposeMatrixDegree(matrix):
     return params
 
 
-def eulerAnglesToRotationMatrix(r):
-    """ 旋转 degree 转换为 旋转 matrix"""
-    rx = torch.FloatTensor([[1, 0, 0], [0, torch.cos(r[0]),
-                                        torch.sin(r[0])],
-                            [0, -torch.sin(r[0]),
-                             torch.cos(r[0])]])
-    ry = torch.FloatTensor([[torch.cos(r[1]), 0, -torch.sin(r[1])], [0, 1, 0],
-                            [torch.sin(r[1]), 0,
-                             torch.cos(r[1])]])
-    rz = torch.FloatTensor([[torch.cos(r[2]),
-                             torch.sin(r[2]), 0],
-                            [-torch.sin(r[2]),
-                             torch.cos(r[2]), 0], [0, 0, 1]])
-    R = torch.FloatTensor(rx @ ry @ rz)
-    return R.to(r.device)
+# def eulerAnglesToRotationMatrix(r):
+#     """ 旋转 degree 转换为 旋转 matrix"""
+#     rx = torch.FloatTensor([[1, 0, 0], [0, torch.cos(r[0]),
+#                                         torch.sin(r[0])],
+#                             [0, -torch.sin(r[0]),
+#                              torch.cos(r[0])]])
+#     ry = torch.FloatTensor([[torch.cos(r[1]), 0, -torch.sin(r[1])], [0, 1, 0],
+#                             [torch.sin(r[1]), 0,
+#                              torch.cos(r[1])]])
+#     rz = torch.FloatTensor([[torch.cos(r[2]),
+#                              torch.sin(r[2]), 0],
+#                             [-torch.sin(r[2]),
+#                              torch.cos(r[2]), 0], [0, 0, 1]])
+#     R = torch.FloatTensor(rx @ ry @ rz)
+#     return R.to(r.device)
+
+# def composeMatrixFromDegree(degree):
+#     """ 由 degree 合成 matrix """
+#     if degree.shape != (6, ):
+#         degree = degree.reshape(6, )
+#     try:
+#         degree = torch.from_numpy(degree).type(torch.float)
+#     except TypeError:
+#         pass
+#     R = eulerAnglesToRotationMatrix(degree[:3])
+#     T = degree[3:].view(-1, 1)
+#     matrix = torch.cat([R, T], dim=1)
+#     return matrix.view(1, 3, 4)
 
 
-def composeMatrixFromDegree(degree):
-    """ 由 degree 合成 matrix """
-    if degree.shape != (6, ):
-        degree = degree.reshape(6, )
-    try:
-        degree = torch.from_numpy(degree).type(torch.float)
-    except TypeError:
-        pass
-    R = eulerAnglesToRotationMatrix(degree[:3])
-    T = degree[3:].view(-1, 1)
-    matrix = torch.cat([R, T], dim=1)
-    return matrix.view(1, 3, 4)
+def composeMatrixFromDegree(rt):
+    rx = torch.cos(rt[0, 0]).repeat(4, 4) * torch.tensor(
+        [[0, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 0]],
+        dtype=float) + torch.sin(rt[0, 0]).repeat(4, 4) * torch.tensor(
+            [[0, 0, 0, 0], [0, 0, -1, 0], [0, 1, 0, 0], [0, 0, 0, 0]],
+            dtype=float) + torch.tensor(
+                [[1, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 1]],
+                dtype=float)
+
+    ry = torch.cos(rt[0, 1]).repeat(4, 4) * torch.tensor(
+        [[1, 0, 0, 0], [0, 0, 0, 0], [0, 0, 1, 0], [0, 0, 0, 0]],
+        dtype=float) + torch.sin(rt[0, 1]).repeat(4, 4) * torch.tensor(
+            [[0, 0, 1, 0], [0, 0, 0, 0], [-1, 0, 0, 0], [0, 0, 0, 0]],
+            dtype=float) + torch.tensor(
+                [[0, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 0], [0, 0, 0, 1]],
+                dtype=float)
+
+    rz = torch.cos(rt[0, 2]).repeat(4, 4) * torch.tensor(
+        [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]],
+        dtype=float) + torch.sin(rt[0, 2]).repeat(4, 4) * torch.tensor(
+            [[0, -1, 0, 0], [1, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]],
+            dtype=float) + torch.tensor(
+                [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]],
+                dtype=float)
+
+    # translation x
+    d = rt[0, 3:].unsqueeze(1).repeat(1, 4)
+    d = d * torch.FloatTensor([[0, 0, 0, 1], [0, 0, 0, 1], [0, 0, 0, 1]])
+
+    # transform matrix
+    R = torch.mm(torch.mm(rx, ry), rz)
+    theta = R[0:3, :] + d
+    return theta.view(1, 3, 4)
 
 
 def reviseMtxFromCrop(imgA_shape, imgB_shape, mtx_res):
