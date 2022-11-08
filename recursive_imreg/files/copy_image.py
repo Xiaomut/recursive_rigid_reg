@@ -3,7 +3,6 @@ import shutil
 from glob import glob
 
 
-
 def copyLeft2Train():
     """ 训练集原数据 """
     src_dir = "Y:/nii2"
@@ -23,6 +22,25 @@ def copyLeft2Train():
         shutil.copy(src_imgs[i + 2], os.path.join(dst_dir, "imgB.nii.gz"))
         print(f"{src_imgs[i+2][4:]} done!")
         i += 4
+        file_num += 1
+        print(f"----- {dst_dir} -----")
+
+
+def copyLeft2TrainGT():
+    """ 训练集原数据分割标签的复制 """
+    src_dir = "Y:/coImage2/results"
+    dst_root_dir = "Y:/traindata2"
+
+    src_imgs = sorted(glob(src_dir + "/*"))
+
+    i, file_num = 0, 1
+    while i < len(src_imgs):
+        dst_dir = os.path.join(dst_root_dir, "img{}".format(file_num))
+        shutil.copy(src_imgs[i], os.path.join(dst_dir, "gt_imgA.nii.gz"))
+        print(f"{src_imgs[i][4:]} done!")
+        shutil.copy(src_imgs[i + 1], os.path.join(dst_dir, "gt_imgB.nii.gz"))
+        print(f"{src_imgs[i+1][4:]} done!")
+        i += 2
         file_num += 1
         print(f"----- {dst_dir} -----")
 
@@ -49,4 +67,5 @@ def copyOnlyLeft2OneDir():
 
 
 if __name__ == "__main__":
-    copyOnlyLeft2OneDir()
+    # copyOnlyLeft2OneDir()
+    copyLeft2TrainGT()

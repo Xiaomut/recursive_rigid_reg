@@ -99,10 +99,9 @@ def getDatas(root_dir, pool_size=12):
 
     if "train" in root_dir:
         r = loadJson("files/train_coordinate.json")
-        pre_images, suf_images = image_dirs[:147] + image_dirs[
-            153:], image_dirs[147:153]
-        X_train_imgs = suf_images[:2]
-        X_test_imgs = suf_images[2:]
+        ratio = int(0.8 * len(image_dirs))
+        X_train_imgs = image_dirs[:ratio]
+        X_test_imgs = image_dirs[ratio:]
     elif "test" in root_dir:
         r = loadJson("files/test_coordinate.json")
         X_train_imgs = image_dirs[:36]

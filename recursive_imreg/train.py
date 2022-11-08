@@ -138,7 +138,7 @@ def main(loadpth=None):
 if __name__ == "__main__":
 
     base_path = os.path.join(os.getcwd(), conf.save_name)
-    result_path = os.path.join(base_path, "all")
+    result_path = os.path.join(base_path, f"cas{conf.n_cascades}", "all")
     os.makedirs(result_path, exist_ok=True)
 
     log = Log(filename=os.path.join(result_path, "train.log"),
@@ -146,7 +146,7 @@ if __name__ == "__main__":
     bestpth_name = os.path.join(result_path, f"best_{conf.save_name}.pth")
     device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
 
-    root_dir = os.path.join(conf.root_path, "testdata")  # testdata traindata
+    root_dir = os.path.join(conf.root_path, "traindata2")  # testdata traindata
     train_iter, test_iter = dataloads.getDataloader(root_dir)
 
     loadpth = None

@@ -19,6 +19,12 @@ def loadJson(file):
     return r
 
 
+def saveJson(adict, save_file):
+    """存json格式的文件"""
+    with open(save_file, 'w') as f:
+        json.dump(adict, f)
+
+
 def readNiiImage(file, otherinfo=False):
     """读取图像, 如果需要其他信息, 则为True"""
     img = sitk.ReadImage(file)
