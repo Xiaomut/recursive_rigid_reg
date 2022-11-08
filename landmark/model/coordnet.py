@@ -4,8 +4,8 @@ import torch.nn as nn
 
 sys.path.append("../")
 sys.path.append("./")
-from landmark.util import dsnt, flat_softmax, linear_expectation, normalized_linspace
-from landmark.model import resnet, unet
+from utils.util import dsnt, flat_softmax, linear_expectation, normalized_linspace
+from model import resnet, unet
 
 
 class CoordRegressionNetwork(nn.Module):

@@ -2,6 +2,11 @@ import torch
 import math
 import numpy as np
 from copy import deepcopy
+from skimage.transform import resize
+
+
+def resizeImg(img, size):
+    return resize(img, size)
 
 
 def cropImageByPoint(array, pt, limit):
@@ -65,36 +70,6 @@ def decomposeMatrixDegree(matrix):
     params = np.asarray(
         [eus[0], eus[1], eus[2], matrix[0, 3], matrix[1, 3], matrix[2, 3]])
     return params
-
-
-# def eulerAnglesToRotationMatrix(r):
-#     """ 旋转 degree 转换为 旋转 matrix"""
-#     rx = torch.FloatTensor([[1, 0, 0], [0, torch.cos(r[0]),
-#                                         torch.sin(r[0])],
-#                             [0, -torch.sin(r[0]),
-#                              torch.cos(r[0])]])
-#     ry = torch.FloatTensor([[torch.cos(r[1]), 0, -torch.sin(r[1])], [0, 1, 0],
-#                             [torch.sin(r[1]), 0,
-#                              torch.cos(r[1])]])
-#     rz = torch.FloatTensor([[torch.cos(r[2]),
-#                              torch.sin(r[2]), 0],
-#                             [-torch.sin(r[2]),
-#                              torch.cos(r[2]), 0], [0, 0, 1]])
-#     R = torch.FloatTensor(rx @ ry @ rz)
-#     return R.to(r.device)
-
-# def composeMatrixFromDegree(degree):
-#     """ 由 degree 合成 matrix """
-#     if degree.shape != (6, ):
-#         degree = degree.reshape(6, )
-#     try:
-#         degree = torch.from_numpy(degree).type(torch.float)
-#     except TypeError:
-#         pass
-#     R = eulerAnglesToRotationMatrix(degree[:3])
-#     T = degree[3:].view(-1, 1)
-#     matrix = torch.cat([R, T], dim=1)
-#     return matrix.view(1, 3, 4)
 
 
 def composeMatrixFromDegree(rt):
