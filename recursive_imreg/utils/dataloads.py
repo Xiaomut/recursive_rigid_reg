@@ -1,166 +1,153 @@
 import os
-import sys
 import torch
+from torch import nn
+from torch.optim import lr_scheduler, Adam, SGD, RMSprop
 import numpy as np
-from torch.utils import data
-from functools import lru_cache
-
-from multiprocessing.dummy import Pool
-
-sys.path.append("../")
-sys.path.append("./")
-from utils.base_util import getImageDirs, loadJson, readNiiImage, saveNiiImage
-from utils.image_util import cropImageByPoint, processOutPt
-from utils.histmatching import matching
+from log import Log
+from utils import losses, dataloads
+from models import recurnet, recurnet_4img
 from config import Config as conf
 
 
-class DatasetPtCrop(data.Dataset):
-    def __init__(self, datas):
-        self.datas = datas
+def train(model, epoch, train_iter, loss_dict, scheduler, optimizer):
+    batches_done = 1
+    train_loss = 0
+    model.train()
+    # for i, (imgA, imgB, filedir) in enumerate(train_iter):
+    #     imgA, imgB = imgA.to(device), imgB.to(device)
+    #     warped, flows = model(imgA, imgB)
+    for i, (imgA, imgB, imgA_gt, imgB_gt, filedir) in enumerate(train_iter):
+        imgA, imgB, = imgA.to(device), imgB.to(device)
+        imgA_gt, imgB_gt = imgA_gt.to(device), imgB_gt.to(device)
+        warped, flows, warped_gt = model(imgA, imgB, imgA_gt, imgB_gt)
+        # log.info(flows)
+        if i % 5 == 0:
+            print(flows)
+        # loss_BA = losses.pearson_correlation(imgA, warped[-1])
+        loss_BA = losses.pearson_correlation(imgA * imgA_gt,
+                                             warped[-1] * warped_gt[-1])
 
-    def __len__(self):
-        return len(self.datas)
+        loss = loss_BA
 
-    def __getitem__(self, index):
-        # imgA_crop, imgB_crop, filename = self.datas[index]
-        imgA_crop, imgB_crop, imgA_gt_crop, imgB_gt_crop, filename = self.datas[
-            index]
+        train_loss += loss.item()
 
-        imgA_tensor = torch.FloatTensor(imgA_crop).unsqueeze(0)
-        imgB_tensor = torch.FloatTensor(imgB_crop).unsqueeze(0)
+        loss_dict['train_loss'].append(np.round(loss.item(), 4))
+        log.info(
+            f"[filedir: {filedir}][LR: {scheduler.get_last_lr()[0]:.6f}] [EPOCH {epoch + 1}/{conf.epochs}] [BATCH {batches_done} / {len(train_iter)}] [Loss: {loss:.4f}]"
+        )
 
-        imgA_gt_tensor = torch.FloatTensor(imgA_gt_crop).unsqueeze(0)
-        imgB_gt_tensor = torch.FloatTensor(imgB_gt_crop).unsqueeze(0)
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
 
-        # return imgA_tensor, imgB_tensor
-        return imgA_tensor, imgB_tensor, imgA_gt_tensor, imgB_gt_tensor, filename
-
-
-def processData(file, r, limit):
-    """only get dot image"""
-    base_dir = os.path.expanduser(file)
-    filenum = os.path.basename(base_dir)
-    imgA = readNiiImage(os.path.join(base_dir, "imgA.nii.gz"))
-    imgB = readNiiImage(os.path.join(base_dir, "imgB.nii.gz"))
-    imgA_gt = readNiiImage(os.path.join(base_dir, "gt_imgA.nii.gz"))
-    imgB_gt = readNiiImage(os.path.join(base_dir, "gt_imgB.nii.gz"))
-
-    # 更新一下坐标, 防止溢出
-    coorA = r[filenum]["imgA"]
-    coorA = processOutPt(coorA, imgA.shape, limit)
-    coorB = r[filenum]["imgB"]
-    coorB = processOutPt(coorB, imgB.shape, limit)
-
-    imgA_input = imgA_gt * imgA
-    imgB_input = imgB_gt * imgB
-    # histmatch  B -> A
-    imgB_input = matching(imgA_input, imgB_input)
-
-    imgA_crop = cropImageByPoint(imgA_input, coorA, limit)
-    imgB_crop = cropImageByPoint(imgB_input, coorB, limit)
-    return imgA_crop, imgB_crop, os.path.basename(base_dir)
+        batches_done += 1
+    return train_loss
 
 
-def processMulData(file, r, limit):
-    """get four images"""
-    base_dir = os.path.expanduser(file)
-    filenum = os.path.basename(base_dir)
-    imgA = readNiiImage(os.path.join(base_dir, "imgA.nii.gz"))
-    imgB = readNiiImage(os.path.join(base_dir, "imgB.nii.gz"))
-    imgA_gt = readNiiImage(os.path.join(base_dir, "gt_imgA.nii.gz"))
-    imgB_gt = readNiiImage(os.path.join(base_dir, "gt_imgB.nii.gz"))
+def validation(model, epoch, test_iter, loss_dict):
+    model.eval()
+    test_loss = 0
+    with torch.no_grad():
+        # for i, (imgA, imgB, filedir) in enumerate(test_iter):
+        #     imgA, imgB = imgA.to(device), imgB.to(device)
+        #     warped, flows = model(imgA, imgB)
+        for i, (imgA, imgB, imgA_gt, imgB_gt, filedir) in enumerate(test_iter):
+            imgA, imgB, = imgA.to(device), imgB.to(device)
+            imgA_gt, imgB_gt = imgA_gt.to(device), imgB_gt.to(device)
+            warped, flows, warped_gt = model(imgA, imgB, imgA_gt, imgB_gt)
 
-    # 更新一下坐标, 防止溢出
-    coorA = r[filenum]["imgA"]
-    coorA = processOutPt(coorA, imgA.shape, limit)
-    coorB = r[filenum]["imgB"]
-    coorB = processOutPt(coorB, imgB.shape, limit)
+            # loss_BA = losses.pearson_correlation(imgA, warped[-1])
+            loss_BA = losses.pearson_correlation(imgA * imgA_gt,
+                                                 warped[-1] * warped_gt[-1])
 
-    # imgA_input = imgA_gt * imgA
-    # imgB_input = imgB_gt * imgB
-    # histmatch  B -> A
-    # imgB_input = matching(imgA_input, imgB_input)
+            loss = loss_BA
+            test_loss += loss.item()
 
-    imgA_crop = cropImageByPoint(imgA, coorA, limit)
-    imgB_crop = cropImageByPoint(imgB, coorB, limit)
-    imgA_gt_crop = cropImageByPoint(imgA_gt, coorA, limit)
-    imgB_gt_crop = cropImageByPoint(imgB_gt, coorB, limit)
+            log.info(
+                f"[filedir: {filedir}][EPOCH {epoch + 1}/{conf.epochs}] [BATCH {i+1} / {len(test_iter)}] [Loss: {loss:.4f}]"
+            )
 
-    filename = os.path.basename(base_dir)
-    return imgA_crop, imgB_crop, imgA_gt_crop, imgB_gt_crop, filename
+            loss_dict['test_loss'].append(np.round(loss.item(), 4))
+    return test_loss
 
 
-def getDatas(root_dir, pool_size=12):
-    train_datas = []
-    test_datas = []
+def main(loadpth=None):
+    start_epoch = 0
+    minloss = np.inf
+    loss_dict = {'train_loss': [], 'test_loss': []}
 
-    image_dirs = getImageDirs(root_dir)
+    model = recurnet_4img.RecursiveCascadeNetwork(device=device,
+                                                  midch=conf.channel,
+                                                  n_cascades=conf.n_cascades)
 
-    if "train" in root_dir:
-        r = loadJson("files/train_coordinate.json")
-        ratio = int(0.8 * len(image_dirs))
-        X_train_imgs = image_dirs[:ratio]
-        X_test_imgs = image_dirs[ratio:]
-    elif "test" in root_dir:
-        r = loadJson("files/test_coordinate.json")
-        X_train_imgs = image_dirs[:36]
-        X_test_imgs = image_dirs[36:]
+    trainable_params = []
+    for submodel in model.stems:
+        trainable_params += list(submodel.parameters())
+
+    if loadpth is None:
+        log.info(conf.getinfo())
+        optimizer = Adam(trainable_params, lr=conf.lr, betas=(0.5, 0.999))
+        scheduler = lr_scheduler.StepLR(optimizer, conf.step_size, conf.gamma)
+        # scheduler = lr_scheduler.CosineAnnealingWarmRestarts(optimizer, 2, 5)
     else:
-        raise NotImplementedError(f"The file {root_dir} doesn't exist!")
-    limit = [256, -60, 200, 128, 128, 128]
+        dic = torch.load(loadpth)
+        start_epoch = dic["epoch"]
+        for i, submodel in enumerate(model.stems):
+            submodel.load_state_dict(dic[f"cascade_{i}"])
+        scheduler = dic["scheduler"]
+        optimizer = dic["optim"]
+        minloss = dic["loss"]
 
-    pool = Pool(pool_size)
-    train_res = []
-    for i in range(len(X_train_imgs)):
-        train_temp = pool.apply_async(processMulData,
-                                      (X_train_imgs[i], r, limit))
-        train_res.append(train_temp)
-    pool.close()
-    pool.join()
+    for epoch in range(start_epoch, conf.epochs):
 
-    for train_r in train_res:
-        train_datas.append(train_r.get())
-    #     imgA_crop, imgB_crop, imgA_gt_crop, imgB_gt_crop, filename = processMulData(
-    #         X_train_imgs[i], r, limit)
-    #     train_datas.append(
-    #         (imgA_crop, imgB_crop, imgA_gt_crop, imgB_gt_crop, filename))
+        # train
+        train_loss = train(model, epoch, train_iter, loss_dict, scheduler,
+                           optimizer)
+        log.info(
+            f"[EPOCH {epoch + 1}/{conf.epochs}] [train Loss: {train_loss:.4f}]"
+        )
+        # valid
+        test_loss = validation(model, epoch, test_iter, loss_dict)
+        log.info(
+            f"[EPOCH {epoch + 1}/{conf.epochs}] [test Loss: {test_loss:.4f}]")
 
-    pool = Pool(pool_size)
-    test_res = []
-    for i in range(len(X_test_imgs)):
-        test_temp = pool.apply_async(processMulData,
-                                     (X_test_imgs[i], r, limit))
-        test_res.append(test_temp)
-    pool.close()
-    pool.join()
+        # update lr
+        scheduler.step()
 
-    for test_r in test_res:
-        test_datas.append(test_r.get())
-    #     imgA_crop, imgB_crop, imgA_gt_crop, imgB_gt_crop, filename = processMulData(
-    #         X_test_imgs[i], r, limit)
-    #     test_datas.append(
-    #         (imgA_crop, imgB_crop, imgA_gt_crop, imgB_gt_crop, filename))
-    return train_datas, test_datas
+        infos = {}
+        infos["epoch"] = epoch + 1
+        infos["scheduler"] = scheduler
+        for i, submodel in enumerate(model.stems):
+            infos[f"cascade_{i}"] = submodel.state_dict()
+        infos["optim"] = optimizer
+        if test_loss < minloss:
+            minloss = test_loss
+            infos["loss"] = minloss
+            torch.save(infos, bestpth_name)
+            log.info(
+                f'$$$$ Save Epoch: [{epoch+1}] [{bestpth_name}] Success $$$$')
 
-
-def getDataloader(root_dir):
-    """ pt_mode: `norch` or `condyle` """
-
-    X_train, X_test = getDatas(root_dir)
-    params_train = {
-        'batch_size': conf.batch_size,
-        'shuffle': False,
-        'num_workers': conf.numwork,
-        'worker_init_fn': np.random.seed(1)
-    }
-    train_set = DatasetPtCrop(X_train)
-    train_dataloader = data.DataLoader(train_set, **params_train)
-    test_set = DatasetPtCrop(X_test)
-    test_dataloader = data.DataLoader(test_set, **params_train)
-    return train_dataloader, test_dataloader
-    """none"""
+        infos["loss"] = minloss
+        if (epoch + 1) % conf.save_epoch == 0:
+            save_epoch = os.path.join(result_path,
+                                      f"{conf.save_name}_{epoch + 1}.pth")
+            torch.save(infos, save_epoch)
+            log.info(f'-------- Save [{save_epoch}] Success --------')
 
 
 if __name__ == "__main__":
-    a, b = getDataloader(os.path.join(conf.root_path, "testdata"))
+
+    base_path = os.path.join(os.getcwd(), conf.save_name)
+    result_path = os.path.join(base_path, f"cas{conf.n_cascades}", "all")
+    os.makedirs(result_path, exist_ok=True)
+
+    log = Log(filename=os.path.join(result_path, "train.log"),
+              mode="w").getlog()
+    bestpth_name = os.path.join(result_path, f"best_{conf.save_name}.pth")
+    device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
+
+    root_dir = os.path.join(conf.root_path, "traindata2")  # testdata traindata
+    train_iter, test_iter = dataloads.getDataloader(root_dir)
+
+    loadpth = None
+    main(loadpth)
