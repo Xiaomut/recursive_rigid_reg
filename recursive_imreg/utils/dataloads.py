@@ -1,153 +1,79 @@
 import os
+import sys
 import torch
-from torch import nn
-from torch.optim import lr_scheduler, Adam, SGD, RMSprop
 import numpy as np
-from log import Log
-from utils import losses, dataloads
-from models import recurnet, recurnet_4img
+from torch.utils import data
+
+sys.path.append("../")
+sys.path.append("./")
+from utils.base_util import getImageDirs, loadJson, readNiiImage, saveNiiImage
+from utils.image_util import cropImageByPoint, processOutPt
+from utils.histmatching import matching
 from config import Config as conf
 
 
-def train(model, epoch, train_iter, loss_dict, scheduler, optimizer):
-    batches_done = 1
-    train_loss = 0
-    model.train()
-    # for i, (imgA, imgB, filedir) in enumerate(train_iter):
-    #     imgA, imgB = imgA.to(device), imgB.to(device)
-    #     warped, flows = model(imgA, imgB)
-    for i, (imgA, imgB, imgA_gt, imgB_gt, filedir) in enumerate(train_iter):
-        imgA, imgB, = imgA.to(device), imgB.to(device)
-        imgA_gt, imgB_gt = imgA_gt.to(device), imgB_gt.to(device)
-        warped, flows, warped_gt = model(imgA, imgB, imgA_gt, imgB_gt)
-        # log.info(flows)
-        if i % 5 == 0:
-            print(flows)
-        # loss_BA = losses.pearson_correlation(imgA, warped[-1])
-        loss_BA = losses.pearson_correlation(imgA * imgA_gt,
-                                             warped[-1] * warped_gt[-1])
+class DatasetPtCrop(data.Dataset):
+    def __init__(self, image_dirs, r, limit, norm=False):
+        self.image_dirs = image_dirs
+        self.r = r
+        self.limit = limit
 
-        loss = loss_BA
+    def __len__(self):
+        return len(self.image_dirs)
 
-        train_loss += loss.item()
+    def __getitem__(self, index):
+        base_dir = os.path.expanduser(self.image_dirs[index])
+        filenum = os.path.basename(base_dir)
+        imgA = readNiiImage(os.path.join(base_dir, "imgA.nii.gz"))
+        imgB = readNiiImage(os.path.join(base_dir, "imgB.nii.gz"))
+        imgA_gt = readNiiImage(os.path.join(base_dir, "gt_imgA.nii.gz"))
+        imgB_gt = readNiiImage(os.path.join(base_dir, "gt_imgB.nii.gz"))
 
-        loss_dict['train_loss'].append(np.round(loss.item(), 4))
-        log.info(
-            f"[filedir: {filedir}][LR: {scheduler.get_last_lr()[0]:.6f}] [EPOCH {epoch + 1}/{conf.epochs}] [BATCH {batches_done} / {len(train_iter)}] [Loss: {loss:.4f}]"
-        )
+        # 更新一下坐标, 防止溢出
+        coorA = self.r[filenum]["imgA"]
+        coorA = processOutPt(coorA, imgA.shape, self.limit)
+        coorB = self.r[filenum]["imgB"]
+        coorB = processOutPt(coorB, imgB.shape, self.limit)
 
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
+        imgA_crop = cropImageByPoint(imgA, coorA, self.limit)
+        imgB_crop = cropImageByPoint(imgB, coorB, self.limit)
+        # imgB_crop = matching(imgA_crop, imgB_crop)
 
-        batches_done += 1
-    return train_loss
+        imgA_gt_crop = cropImageByPoint(imgA_gt, coorA, self.limit)
+        imgB_gt_crop = cropImageByPoint(imgB_gt, coorB, self.limit)
 
+        imgA_tensor = torch.FloatTensor(imgA_crop).unsqueeze(0)
+        imgB_tensor = torch.FloatTensor(imgB_crop).unsqueeze(0)
 
-def validation(model, epoch, test_iter, loss_dict):
-    model.eval()
-    test_loss = 0
-    with torch.no_grad():
-        # for i, (imgA, imgB, filedir) in enumerate(test_iter):
-        #     imgA, imgB = imgA.to(device), imgB.to(device)
-        #     warped, flows = model(imgA, imgB)
-        for i, (imgA, imgB, imgA_gt, imgB_gt, filedir) in enumerate(test_iter):
-            imgA, imgB, = imgA.to(device), imgB.to(device)
-            imgA_gt, imgB_gt = imgA_gt.to(device), imgB_gt.to(device)
-            warped, flows, warped_gt = model(imgA, imgB, imgA_gt, imgB_gt)
+        imgA_gt_tensor = torch.FloatTensor(imgA_gt_crop).unsqueeze(0)
+        imgB_gt_tensor = torch.FloatTensor(imgB_gt_crop).unsqueeze(0)
 
-            # loss_BA = losses.pearson_correlation(imgA, warped[-1])
-            loss_BA = losses.pearson_correlation(imgA * imgA_gt,
-                                                 warped[-1] * warped_gt[-1])
-
-            loss = loss_BA
-            test_loss += loss.item()
-
-            log.info(
-                f"[filedir: {filedir}][EPOCH {epoch + 1}/{conf.epochs}] [BATCH {i+1} / {len(test_iter)}] [Loss: {loss:.4f}]"
-            )
-
-            loss_dict['test_loss'].append(np.round(loss.item(), 4))
-    return test_loss
+        return imgA_tensor, imgB_tensor, imgA_gt_tensor, imgB_gt_tensor, os.path.basename(
+            base_dir)
 
 
-def main(loadpth=None):
-    start_epoch = 0
-    minloss = np.inf
-    loss_dict = {'train_loss': [], 'test_loss': []}
+def getDataloader(root_dir):
+    """ pt_mode: `norch` or `condyle` """
+    image_dirs = getImageDirs(root_dir)
+    image_dirs.remove(os.path.join(root_dir, "img54"))
+    image_dirs.remove(os.path.join(root_dir, "img64"))
 
-    model = recurnet_4img.RecursiveCascadeNetwork(device=device,
-                                                  midch=conf.channel,
-                                                  n_cascades=conf.n_cascades)
+    ratio = int(0.8 * len(image_dirs))
+    X_train = image_dirs[:ratio]
+    X_test = image_dirs[ratio:]
 
-    trainable_params = []
-    for submodel in model.stems:
-        trainable_params += list(submodel.parameters())
+    r = loadJson("files/train_coordinate.json")
+    # limit = [256, -60, 200, 128, 128, 128]
+    limit = [220, -80, 128, 128, 128, 128]
 
-    if loadpth is None:
-        log.info(conf.getinfo())
-        optimizer = Adam(trainable_params, lr=conf.lr, betas=(0.5, 0.999))
-        scheduler = lr_scheduler.StepLR(optimizer, conf.step_size, conf.gamma)
-        # scheduler = lr_scheduler.CosineAnnealingWarmRestarts(optimizer, 2, 5)
-    else:
-        dic = torch.load(loadpth)
-        start_epoch = dic["epoch"]
-        for i, submodel in enumerate(model.stems):
-            submodel.load_state_dict(dic[f"cascade_{i}"])
-        scheduler = dic["scheduler"]
-        optimizer = dic["optim"]
-        minloss = dic["loss"]
-
-    for epoch in range(start_epoch, conf.epochs):
-
-        # train
-        train_loss = train(model, epoch, train_iter, loss_dict, scheduler,
-                           optimizer)
-        log.info(
-            f"[EPOCH {epoch + 1}/{conf.epochs}] [train Loss: {train_loss:.4f}]"
-        )
-        # valid
-        test_loss = validation(model, epoch, test_iter, loss_dict)
-        log.info(
-            f"[EPOCH {epoch + 1}/{conf.epochs}] [test Loss: {test_loss:.4f}]")
-
-        # update lr
-        scheduler.step()
-
-        infos = {}
-        infos["epoch"] = epoch + 1
-        infos["scheduler"] = scheduler
-        for i, submodel in enumerate(model.stems):
-            infos[f"cascade_{i}"] = submodel.state_dict()
-        infos["optim"] = optimizer
-        if test_loss < minloss:
-            minloss = test_loss
-            infos["loss"] = minloss
-            torch.save(infos, bestpth_name)
-            log.info(
-                f'$$$$ Save Epoch: [{epoch+1}] [{bestpth_name}] Success $$$$')
-
-        infos["loss"] = minloss
-        if (epoch + 1) % conf.save_epoch == 0:
-            save_epoch = os.path.join(result_path,
-                                      f"{conf.save_name}_{epoch + 1}.pth")
-            torch.save(infos, save_epoch)
-            log.info(f'-------- Save [{save_epoch}] Success --------')
-
-
-if __name__ == "__main__":
-
-    base_path = os.path.join(os.getcwd(), conf.save_name)
-    result_path = os.path.join(base_path, f"cas{conf.n_cascades}", "all")
-    os.makedirs(result_path, exist_ok=True)
-
-    log = Log(filename=os.path.join(result_path, "train.log"),
-              mode="w").getlog()
-    bestpth_name = os.path.join(result_path, f"best_{conf.save_name}.pth")
-    device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
-
-    root_dir = os.path.join(conf.root_path, "traindata2")  # testdata traindata
-    train_iter, test_iter = dataloads.getDataloader(root_dir)
-
-    loadpth = None
-    main(loadpth)
+    params_train = {
+        'batch_size': conf.batch_size,
+        'shuffle': True,
+        'num_workers': conf.numwork,
+        'worker_init_fn': np.random.seed(1)
+    }
+    train_set = DatasetPtCrop(X_train, r=r, limit=limit)
+    train_dataloader = data.DataLoader(train_set, **params_train)
+    test_set = DatasetPtCrop(X_test, r=r, limit=limit)
+    test_dataloader = data.DataLoader(test_set, **params_train)
+    return train_dataloader, test_dataloader

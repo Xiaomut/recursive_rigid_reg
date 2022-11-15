@@ -37,10 +37,10 @@ class VTNAffineStem(nn.Module):
             nn.InstanceNorm3d(32 * channels), LeakyReLU(0.1))
 
         self.fc_loc = nn.Sequential(
-            Linear(channels * 12 * 32, 256),
+            Linear(channels * 8 * 32, 512),
             ReLU(True),
             Dropout(0.1),
-            Linear(256, 6),
+            Linear(512, 6),
         )
 
         for name, w in self.named_parameters():

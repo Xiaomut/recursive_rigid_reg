@@ -5,7 +5,7 @@ class Config:
 
     save_name = "recurse"
 
-    root_path = '/home/wangs'
+    root_path = 'Y:'  # /home/wangs
 
     # Dataloader Params
     norm = False  # 不能归一化
@@ -21,9 +21,9 @@ class Config:
     # Datasets Params
     testsize = 0.1  # 测试集比例
 
-    n_cascades = 1
-    batch_size = 2
-    channel = 8
+    n_cascades = 3
+    batch_size = 1
+    channel = 16
 
     def getinfo():
         return {

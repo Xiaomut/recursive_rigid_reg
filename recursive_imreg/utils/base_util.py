@@ -47,11 +47,11 @@ def saveNiiImage(array, infos, filename):
     sitk.WriteImage(img, fileName=filename)
 
 
-def resampleNiiImg(mtx, img, infos, save_file, mode="bilinear"):
+def resampleNiiImg(mtx, img, infos, save_file=None, mode="bilinear"):
     """对输入图像进行重采样, mode 可选 ['bilinear', 'nearest']"""
-    grid = F.affine_grid(mtx, img.size(), align_corners=False)
+    grid = F.affine_grid(mtx, img.size(), align_corners=False).float()
     resample = F.grid_sample(img, grid, mode=mode, align_corners=False)
-    if save_file:
+    if save_file is not None:
         resample_save = resample.type(torch.ShortTensor).squeeze().squeeze()
         saveNiiImage(resample_save.numpy(), infos, save_file)
     return resample

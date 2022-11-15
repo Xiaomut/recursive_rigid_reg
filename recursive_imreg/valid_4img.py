@@ -35,9 +35,9 @@ def getOriThetas(rts, coorA, coorB, shape1, shape2):
     return mtx_revises
 
 
-def validation(filenum, net_mode="test", ifsave=False):
-    base_dir = f"{conf.root_path}/{net_mode}data/img{filenum}"
-    log.info(f"--------- filedir: [{net_mode} -> img{filenum}] ---------")
+def validation(filenum, datadir="testdata", ifsave=False):
+    base_dir = f"{conf.root_path}/{datadir}/img{filenum}"
+    log.info(f"--------- filedir: [{datadir} -> img{filenum}] ---------")
 
     imgA, infos = readNiiImage(os.path.join(base_dir, "imgA.nii.gz"), True)
     gt_imgA = readNiiImage(os.path.join(base_dir, "gt_imgA.nii.gz"))
@@ -46,7 +46,8 @@ def validation(filenum, net_mode="test", ifsave=False):
     # label_mtx = np.loadtxt(os.path.join(base_dir, "label.txt"))
 
     r = loadJson(f"files/train_coordinate.json")
-    limit = [256, -60, 200, 128, 128, 128]
+    # limit = [256, -60, 200, 128, 128, 128]
+    limit = [220, -80, 128, 128, 128, 128]
 
     # 更新一下坐标, 防止溢出
     coorA = r[f"img{filenum}"]["imgA"]
@@ -96,18 +97,22 @@ def validation(filenum, net_mode="test", ifsave=False):
             # 需要将其相乘进行存储
             warped_gt = (stem_result *
                          stem_result_gt).squeeze(0).squeeze(0).cpu().detach()
-            saveNiiImage(
-                warped_gt.numpy(), infos,
-                save_name.replace(".nii.gz", f"_crop_{nums}{i+1}.nii.gz"))
-            warped = resampleNiiImg(
-                theta_o, warped, infos,
-                save_name.replace(".nii.gz", f"_{nums}{i+1}.nii.gz"))
+            # 保存被一个阶段的图像
+            # saveNiiImage(warped_gt.numpy(), infos, save_name.replace(".nii.gz", f"_crop_{nums}{i+1}.nii.gz"))
+            # warped = resampleNiiImg(theta_o, warped, infos, save_name.replace(".nii.gz", f"_{nums}{i+1}.nii.gz"))
+            # 只保存最后的图像
+            warped = resampleNiiImg(theta_o, warped, infos)
+        warped = warped.type(torch.ShortTensor).squeeze().squeeze().numpy()
+        saveNiiImage(warped_gt.numpy(), infos,
+                     save_name.replace(".nii.gz", "_crop_final.nii.gz"))
+        saveNiiImage(warped, infos,
+                     save_name.replace(".nii.gz", "_final.nii.gz"))
 
 
 if __name__ == "__main__":
 
     nums = conf.n_cascades
-    model_path = "recurse/num2/best_recurse.pth"
+    model_path = "recurse/cas{}/small/best_recurse.pth".format(nums)
     state_dict = torch.load(model_path, map_location="cpu")
 
     device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
@@ -119,6 +124,6 @@ if __name__ == "__main__":
     resample_name = f"warped_{conf.save_name}.nii.gz"
 
     # for filenum in range(15, 16):
-    #     validation(filenum, net_mode="test", ifsave=False)
+    #     validation(filenum, net_mode="testdata", ifsave=False)
 
-    validation(232, net_mode="train", ifsave=True)
+    validation(54, datadir="traindata2", ifsave=True)
