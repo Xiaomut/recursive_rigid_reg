@@ -47,7 +47,10 @@ def validation(filenum, datadir="testdata", ifsave=False):
 
     r = loadJson(f"files/train_coordinate.json")
     # limit = [256, -60, 200, 128, 128, 128]
-    limit = [220, -80, 128, 128, 128, 128]
+    if "train" in datadir:
+        limit = [220, -80, 128, 128, 128, 128]
+    else:
+        limit = [200, -60, 128, 128, 128, 128]
 
     # 更新一下坐标, 防止溢出
     coorA = r[f"img{filenum}"]["imgA"]
@@ -58,6 +61,8 @@ def validation(filenum, datadir="testdata", ifsave=False):
     # 截取原图像
     imgA_crop = cropImageByPoint(imgA, coorA, limit)
     imgB_crop = cropImageByPoint(imgB, coorB, limit)
+    # saveNiiImage(imgA_crop, infos, os.path.join(base_dir, "imgA_crop.nii.gz"))
+    # saveNiiImage(imgB_crop, infos, os.path.join(base_dir, "imgB_crop.nii.gz"))
 
     # 截取分割图像并保存
     imgA_gt_crop = cropImageByPoint(gt_imgA, coorA, limit)
@@ -126,4 +131,4 @@ if __name__ == "__main__":
     # for filenum in range(15, 16):
     #     validation(filenum, net_mode="testdata", ifsave=False)
 
-    validation(54, datadir="traindata2", ifsave=True)
+    validation(68, datadir="traindata2", ifsave=True)

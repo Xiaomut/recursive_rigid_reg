@@ -8,7 +8,7 @@ sys.path.append("../")
 sys.path.append("./")
 from utils.base_util import getImageDirs, loadJson, readNiiImage, saveNiiImage
 from utils.image_util import cropImageByPoint, processOutPt
-from utils.histmatching import matching
+from utils.histmatching import matching, histForTrain
 from config import Config as conf
 
 
@@ -17,15 +17,27 @@ class DatasetPtCrop(data.Dataset):
         self.image_dirs = image_dirs
         self.r = r
         self.limit = limit
+        self.t_quantiles, self.t_values = self.getBaseInfo()
 
     def __len__(self):
         return len(self.image_dirs)
+
+    def getBaseInfo(self):
+        file = "/home/wangs/base_imgs/base.nii.gz"  # _crop
+        template = readNiiImage(file)
+        nt_data_array = template.ravel()
+        t_values, t_counts = np.unique(nt_data_array, return_counts=True)
+        t_quantiles = np.cumsum(t_counts).astype(np.float64)
+        t_quantiles /= t_quantiles[-1]
+        return t_quantiles, t_values
 
     def __getitem__(self, index):
         base_dir = os.path.expanduser(self.image_dirs[index])
         filenum = os.path.basename(base_dir)
         imgA = readNiiImage(os.path.join(base_dir, "imgA.nii.gz"))
         imgB = readNiiImage(os.path.join(base_dir, "imgB.nii.gz"))
+        imgA = histForTrain(self.t_quantiles, self.t_values, imgA)
+        imgB = histForTrain(self.t_quantiles, self.t_values, imgB)
         imgA_gt = readNiiImage(os.path.join(base_dir, "gt_imgA.nii.gz"))
         imgB_gt = readNiiImage(os.path.join(base_dir, "gt_imgB.nii.gz"))
 
@@ -37,7 +49,9 @@ class DatasetPtCrop(data.Dataset):
 
         imgA_crop = cropImageByPoint(imgA, coorA, self.limit)
         imgB_crop = cropImageByPoint(imgB, coorB, self.limit)
-        # imgB_crop = matching(imgA_crop, imgB_crop)
+        # histequal
+        # imgA_crop = histForTrain(self.t_quantiles, self.t_values, imgA_crop)
+        # imgB_crop = histForTrain(self.t_quantiles, self.t_values, imgB_crop)
 
         imgA_gt_crop = cropImageByPoint(imgA_gt, coorA, self.limit)
         imgB_gt_crop = cropImageByPoint(imgB_gt, coorB, self.limit)
@@ -77,3 +91,9 @@ def getDataloader(root_dir):
     test_set = DatasetPtCrop(X_test, r=r, limit=limit)
     test_dataloader = data.DataLoader(test_set, **params_train)
     return train_dataloader, test_dataloader
+
+
+if __name__ == "__main__":
+    a, b = getDataloader(os.path.join(conf.root_path, "traindata2"))
+    for i in a:
+        print(i.shape)

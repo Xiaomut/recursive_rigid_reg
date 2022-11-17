@@ -45,12 +45,7 @@ def matching(template, pt_data):
     return out_img
 
 
-def histForSave(template, pt_data, dst, infos):
-
-    nt_data_array = template.ravel()
-    t_values, t_counts = np.unique(nt_data_array, return_counts=True)
-    t_quantiles = np.cumsum(t_counts).astype(np.float64)
-    t_quantiles /= t_quantiles[-1]
+def histForSave(t_quantiles, t_values, pt_data, dst, infos):
 
     oldshape = pt_data.shape
     # Converts the data arrays to single dimension and normalizes by the maximum
