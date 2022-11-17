@@ -1,6 +1,7 @@
 import os
 import sys
 import numpy as np
+from multiprocessing.dummy import Pool
 
 sys.path.append('../')
 sys.path.append('./')
@@ -21,8 +22,7 @@ def getBaseImg():
                            "Y:/traindata2/baseimg/base.nii.gz")
 
 
-def getBaseInfo():
-    file = "Y:/traindata2/baseimg/base.nii.gz"
+def getBaseInfo(file="Y:/traindata2/baseimg/base.nii.gz"):
     template, infos = base_util.readNiiImage(file, True)
     nt_data_array = template.ravel()
     t_values, t_counts = np.unique(nt_data_array, return_counts=True)
@@ -44,7 +44,7 @@ def getCropImg(imgrec, imgnum, r, limit):
     return img_crop, filename
 
 
-def getAllHisImgs():
+def getAllHisCropImgs():
     r = base_util.loadJson("files/train_coordinate.json")
     limit = [220, -80, 128, 128, 128, 128]
 
@@ -70,8 +70,31 @@ def getAllHisImgs():
     print(errors)
 
 
+def getAllHisImgs():
+    base_dir = "Y:/traindata2"
+    t_quantiles, t_values, infos = getBaseInfo(
+        file="Y:/traindata2/baseimg/base.nii.gz")
+
+    pool = Pool(2)
+
+    for i in range(1, 124):
+        file_dir = os.path.join(base_dir, f"img{i}")
+        fileA = os.path.join(file_dir, "imgA.nii.gz")
+        fileB = os.path.join(file_dir, "imgB.nii.gz")
+        saveA = fileA.replace("imgA.nii.gz", "imgA_his.nii.gz")
+        saveB = fileB.replace("imgB.nii.gz", "imgB_his.nii.gz")
+        imgA = base_util.readNiiImage(fileA)
+        imgB = base_util.readNiiImage(fileB)
+        pool.apply_async(histmatching.histForSave,
+                         (t_quantiles, t_values, imgA, saveA, infos))
+        pool.apply_async(histmatching.histForSave,
+                         (t_quantiles, t_values, imgB, saveB, infos))
+    pool.close()
+    pool.join()
+
+
 if __name__ == "__main__":
     # 得到base图像
     # getBaseImg()
     # 处理所有图像
-    # getAllHisImgs()
+    getAllHisImgs()

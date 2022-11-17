@@ -17,7 +17,7 @@ class DatasetPtCrop(data.Dataset):
         self.image_dirs = image_dirs
         self.r = r
         self.limit = limit
-        self.t_quantiles, self.t_values = self.getBaseInfo()
+        # self.t_quantiles, self.t_values = self.getBaseInfo()
 
     def __len__(self):
         return len(self.image_dirs)
@@ -34,10 +34,10 @@ class DatasetPtCrop(data.Dataset):
     def __getitem__(self, index):
         base_dir = os.path.expanduser(self.image_dirs[index])
         filenum = os.path.basename(base_dir)
-        imgA = readNiiImage(os.path.join(base_dir, "imgA.nii.gz"))
-        imgB = readNiiImage(os.path.join(base_dir, "imgB.nii.gz"))
-        imgA = histForTrain(self.t_quantiles, self.t_values, imgA)
-        imgB = histForTrain(self.t_quantiles, self.t_values, imgB)
+        imgA = readNiiImage(os.path.join(base_dir, "imgA_his.nii.gz"))
+        imgB = readNiiImage(os.path.join(base_dir, "imgB_his.nii.gz"))
+        # imgA = histForTrain(self.t_quantiles, self.t_values, imgA)
+        # imgB = histForTrain(self.t_quantiles, self.t_values, imgB)
         imgA_gt = readNiiImage(os.path.join(base_dir, "gt_imgA.nii.gz"))
         imgB_gt = readNiiImage(os.path.join(base_dir, "gt_imgB.nii.gz"))
 

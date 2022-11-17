@@ -45,7 +45,7 @@ def matching(template, pt_data):
     return out_img
 
 
-def histForSave(t_quantiles, t_values, pt_data, dst, infos):
+def histForTrain(t_quantiles, t_values, pt_data):
 
     oldshape = pt_data.shape
     # Converts the data arrays to single dimension and normalizes by the maximum
@@ -68,5 +68,11 @@ def histForSave(t_quantiles, t_values, pt_data, dst, infos):
 
     # Reshapes the corresponding values to the indexes and reshapes the array to input
     out_img = interp_t_values[bin_idx].reshape(oldshape)
+    # saveNiiImage(out_img, infos, dst)
+    return out_img
+
+
+def histForSave(t_quantiles, t_values, pt_data, dst, infos):
+    out_img = histForTrain(t_quantiles, t_values, pt_data)
     saveNiiImage(out_img, infos, dst)
     print(f"--- {dst} done! ---")
