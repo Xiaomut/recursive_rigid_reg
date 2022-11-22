@@ -1,6 +1,7 @@
 import os
 import sys
 import torch
+import random
 import numpy as np
 from torch.utils import data
 
@@ -72,13 +73,14 @@ def getDataloader(root_dir):
     image_dirs.remove(os.path.join(root_dir, "img54"))
     image_dirs.remove(os.path.join(root_dir, "img64"))
 
+    random.shuffle(image_dirs)
     ratio = int(0.8 * len(image_dirs))
     X_train = image_dirs[:ratio]
     X_test = image_dirs[ratio:]
 
     r = loadJson("files/train_coordinate.json")
-    # limit = [256, -60, 200, 128, 128, 128]
     limit = [220, -80, 128, 128, 128, 128]
+    # limit = [200, -60, 128, 128, 128, 128]
 
     params_train = {
         'batch_size': conf.batch_size,
@@ -91,6 +93,23 @@ def getDataloader(root_dir):
     test_set = DatasetPtCrop(X_test, r=r, limit=limit)
     test_dataloader = data.DataLoader(test_set, **params_train)
     return train_dataloader, test_dataloader
+
+
+def getTestloader(root_dir="/home/wangs/testdata"):
+    image_dirs = getImageDirs(root_dir)
+
+    r = loadJson("files/test_coordinate.json")
+    limit = [200, -60, 128, 128, 128, 128]
+
+    params_test = {
+        'batch_size': conf.batch_size,
+        'shuffle': False,
+        'num_workers': conf.numwork,
+        'worker_init_fn': np.random.seed(1)
+    }
+    test_set = DatasetPtCrop(image_dirs, r=r, limit=limit)
+    test_dataloader = data.DataLoader(test_set, **params_test)
+    return test_dataloader
 
 
 if __name__ == "__main__":

@@ -39,9 +39,9 @@ def validation(filenum, datadir="testdata", ifsave=False):
     base_dir = f"{conf.root_path}/{datadir}/img{filenum}"
     log.info(f"--------- filedir: [{datadir} -> img{filenum}] ---------")
 
-    imgA, infos = readNiiImage(os.path.join(base_dir, "imgA.nii.gz"), True)
+    imgA, infos = readNiiImage(os.path.join(base_dir, "imgA_his.nii.gz"), True)
     gt_imgA = readNiiImage(os.path.join(base_dir, "gt_imgA.nii.gz"))
-    imgB = readNiiImage(os.path.join(base_dir, "imgB.nii.gz"))
+    imgB = readNiiImage(os.path.join(base_dir, "imgB_his.nii.gz"))
     gt_imgB = readNiiImage(os.path.join(base_dir, "gt_imgB.nii.gz"))
     # label_mtx = np.loadtxt(os.path.join(base_dir, "label.txt"))
 
@@ -117,7 +117,8 @@ def validation(filenum, datadir="testdata", ifsave=False):
 if __name__ == "__main__":
 
     nums = conf.n_cascades
-    model_path = "recurse/cas{}/small/best_recurse.pth".format(nums)
+    model_path = "recurse/cas{}/small_his_fullimg/best_recurse.pth".format(
+        nums)
     state_dict = torch.load(model_path, map_location="cpu")
 
     device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
@@ -131,4 +132,4 @@ if __name__ == "__main__":
     # for filenum in range(15, 16):
     #     validation(filenum, net_mode="testdata", ifsave=False)
 
-    validation(68, datadir="traindata2", ifsave=True)
+    validation(83, datadir="traindata2", ifsave=False)

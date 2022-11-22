@@ -4,7 +4,7 @@ from torch import nn
 from torch.optim import lr_scheduler, Adam, SGD, RMSprop
 import numpy as np
 from log import Log
-from utils import losses, dataloads
+from utils import losses, dataloads, dataloads_pre
 from models import recurnet, recurnet_4img
 from config import Config as conf
 
@@ -13,17 +13,12 @@ def train(model, epoch, train_iter, loss_dict, scheduler, optimizer):
     batches_done = 1
     train_loss = 0
     model.train()
-    # for i, (imgA, imgB, filedir) in enumerate(train_iter):
-    #     imgA, imgB = imgA.to(device), imgB.to(device)
-    #     warped, flows = model(imgA, imgB)
     for i, (imgA, imgB, imgA_gt, imgB_gt, filedir) in enumerate(train_iter):
         imgA, imgB, = imgA.to(device), imgB.to(device)
         imgA_gt, imgB_gt = imgA_gt.to(device), imgB_gt.to(device)
         warped, flows, warped_gt = model(imgA, imgB, imgA_gt, imgB_gt)
-        # log.info(flows)
         if i % 5 == 0:
             print(flows)
-        # loss_BA = losses.pearson_correlation(imgA, warped[-1])
         loss_BA = losses.pearson_correlation(imgA * imgA_gt,
                                              warped[-1] * warped_gt[-1])
 
@@ -44,19 +39,39 @@ def train(model, epoch, train_iter, loss_dict, scheduler, optimizer):
     return train_loss
 
 
-def validation(model, epoch, test_iter, loss_dict):
+def validation(model, epoch, valid_iter, loss_dict):
+    model.eval()
+    valid_loss = 0
+    with torch.no_grad():
+        for i, (imgA, imgB, imgA_gt, imgB_gt,
+                filedir) in enumerate(valid_iter):
+            imgA, imgB, = imgA.to(device), imgB.to(device)
+            imgA_gt, imgB_gt = imgA_gt.to(device), imgB_gt.to(device)
+            warped, flows, warped_gt = model(imgA, imgB, imgA_gt, imgB_gt)
+
+            loss_BA = losses.pearson_correlation(imgA * imgA_gt,
+                                                 warped[-1] * warped_gt[-1])
+
+            loss = loss_BA
+            valid_loss += loss.item()
+
+            log.info(
+                f"[filedir: {filedir}][EPOCH {epoch + 1}/{conf.epochs}] [BATCH {i+1} / {len(valid_iter)}] [Loss: {loss:.4f}]"
+            )
+
+            loss_dict['valid_loss'].append(np.round(loss.item(), 4))
+    return valid_loss
+
+
+def test(model, epoch, test_iter, loss_dict):
     model.eval()
     test_loss = 0
     with torch.no_grad():
-        # for i, (imgA, imgB, filedir) in enumerate(test_iter):
-        #     imgA, imgB = imgA.to(device), imgB.to(device)
-        #     warped, flows = model(imgA, imgB)
         for i, (imgA, imgB, imgA_gt, imgB_gt, filedir) in enumerate(test_iter):
             imgA, imgB, = imgA.to(device), imgB.to(device)
             imgA_gt, imgB_gt = imgA_gt.to(device), imgB_gt.to(device)
             warped, flows, warped_gt = model(imgA, imgB, imgA_gt, imgB_gt)
 
-            # loss_BA = losses.pearson_correlation(imgA, warped[-1])
             loss_BA = losses.pearson_correlation(imgA * imgA_gt,
                                                  warped[-1] * warped_gt[-1])
 
@@ -74,7 +89,7 @@ def validation(model, epoch, test_iter, loss_dict):
 def main(loadpth=None):
     start_epoch = 0
     minloss = np.inf
-    loss_dict = {'train_loss': [], 'test_loss': []}
+    loss_dict = {'train_loss': [], 'valid_loss': [], 'test_loss': []}
 
     model = recurnet_4img.RecursiveCascadeNetwork(device=device,
                                                   midch=conf.channel,
@@ -87,8 +102,8 @@ def main(loadpth=None):
     if loadpth is None:
         log.info(conf.getinfo())
         optimizer = Adam(trainable_params, lr=conf.lr, betas=(0.5, 0.999))
-        scheduler = lr_scheduler.StepLR(optimizer, conf.step_size, conf.gamma)
-        # scheduler = lr_scheduler.CosineAnnealingWarmRestarts(optimizer, 2, 5)
+        # scheduler = lr_scheduler.StepLR(optimizer, conf.step_size, conf.gamma)
+        scheduler = lr_scheduler.CosineAnnealingWarmRestarts(optimizer, 2, 5)
     else:
         dic = torch.load(loadpth)
         start_epoch = dic["epoch"]
@@ -107,6 +122,12 @@ def main(loadpth=None):
             f"[EPOCH {epoch + 1}/{conf.epochs}] [train Loss: {train_loss:.4f}]"
         )
         # valid
+        valid_loss = validation(model, epoch, valid_iter, loss_dict)
+        log.info(
+            f"[EPOCH {epoch + 1}/{conf.epochs}] [valid Loss: {valid_loss:.4f}]"
+        )
+
+        # test
         test_loss = validation(model, epoch, test_iter, loss_dict)
         log.info(
             f"[EPOCH {epoch + 1}/{conf.epochs}] [test Loss: {test_loss:.4f}]")
@@ -138,7 +159,8 @@ def main(loadpth=None):
 if __name__ == "__main__":
 
     base_path = os.path.join(os.getcwd(), conf.save_name)
-    result_path = os.path.join(base_path, f"cas{conf.n_cascades}", "all")
+    result_path = os.path.join(base_path, f"cas{conf.n_cascades}",
+                               "small_his_fullimg")
     os.makedirs(result_path, exist_ok=True)
 
     log = Log(filename=os.path.join(result_path, "train.log"),
@@ -147,7 +169,9 @@ if __name__ == "__main__":
     device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
 
     root_dir = os.path.join(conf.root_path, "traindata2")  # testdata traindata
-    train_iter, test_iter = dataloads.getDataloader(root_dir)
+    train_iter, valid_iter = dataloads.getDataloader(root_dir)
+    test_iter = dataloads.getTestloader(
+        os.path.join(conf.root_path, "testdata"))
 
     loadpth = None
     main(loadpth)

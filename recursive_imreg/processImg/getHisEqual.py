@@ -71,13 +71,14 @@ def getAllHisCropImgs():
 
 
 def getAllHisImgs():
+    errors = []
     base_dir = "Y:/traindata2"
     t_quantiles, t_values, infos = getBaseInfo(
         file="Y:/traindata2/baseimg/base.nii.gz")
 
-    pool = Pool(2)
+    # pool = Pool(2)
 
-    for i in range(1, 124):
+    for i in range(13, 124):
         file_dir = os.path.join(base_dir, f"img{i}")
         fileA = os.path.join(file_dir, "imgA.nii.gz")
         fileB = os.path.join(file_dir, "imgB.nii.gz")
@@ -85,12 +86,19 @@ def getAllHisImgs():
         saveB = fileB.replace("imgB.nii.gz", "imgB_his.nii.gz")
         imgA = base_util.readNiiImage(fileA)
         imgB = base_util.readNiiImage(fileB)
-        pool.apply_async(histmatching.histForSave,
-                         (t_quantiles, t_values, imgA, saveA, infos))
-        pool.apply_async(histmatching.histForSave,
-                         (t_quantiles, t_values, imgB, saveB, infos))
-    pool.close()
-    pool.join()
+        try:
+            histmatching.histForSave(t_quantiles, t_values, imgA, saveA, infos)
+            histmatching.histForSave(t_quantiles, t_values, imgB, saveB, infos)
+        except Exception as e:
+            print(e)
+            errors.append(i)
+        # pool.apply_async(histmatching.histForSave,
+        #                  (t_quantiles, t_values, imgA, saveA, infos))
+        # pool.apply_async(histmatching.histForSave,
+        #                  (t_quantiles, t_values, imgB, saveB, infos))
+    # pool.close()
+    # pool.join()
+    print(errors)
 
 
 if __name__ == "__main__":
