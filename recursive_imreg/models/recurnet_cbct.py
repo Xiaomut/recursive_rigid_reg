@@ -5,7 +5,7 @@ import sys
 
 sys.path.append("../")
 sys.path.append("./")
-from models.base_network_4img import VTNAffineStem
+from models.cbctnet import FeatureConcat
 
 
 class SpatialTransform(nn.Module):
@@ -69,8 +69,11 @@ class SpatialTransform(nn.Module):
 class RecursiveCascadeNetwork(nn.Module):
     def __init__(self,
                  n_cascades=1,
-                 midch=8,
+                 midch1=8,
+                 midch2=32,
                  device=None,
+                 normalize_features=False,
+                 normalize_matches=False,
                  state_dict=None,
                  testing=False):
         super(RecursiveCascadeNetwork, self).__init__()
@@ -78,7 +81,9 @@ class RecursiveCascadeNetwork(nn.Module):
         self.stems = []
         # See note in base_networks.py about the assumption in the image shape
         for i in range(n_cascades):
-            self.stems.append(VTNAffineStem(channels=midch))
+            self.stems.append(
+                FeatureConcat(midch1, midch2, normalize_features,
+                              normalize_matches))
 
         for model in self.stems:
             model.to(device)
@@ -113,22 +118,3 @@ class RecursiveCascadeNetwork(nn.Module):
             thetas.append(theta)
 
         return stem_results, thetas, stem_results_gt
-
-
-if __name__ == "__main__":
-    from torchviz import make_dot
-
-    device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
-    # model = RecursiveCascadeNetwork(device=device, midch=8, n_cascades=1)
-    model = VTNAffineStem(8)
-
-    size = (1, 1, 140, 256, 256)
-    x1 = torch.rand(size)
-    x1_gt = torch.rand(size)
-    x2 = torch.rand(size)
-    x2_gt = torch.rand(size)
-    y = model(x1, x2, x1_gt, x2_gt)
-    g = make_dot(y)
-    g.render(filename='graph', view=False)
-
-    # from tensorwatch import draw_model

@@ -33,7 +33,7 @@ def histogramMatching(pt_data, t_quantiles, t_values):
     return out_img
 
 
-@lru_cache(200)
+# @lru_cache(200)
 def matching(template, pt_data):
 
     nt_data_array = template.ravel()
@@ -56,6 +56,11 @@ def histForTrain(t_quantiles, t_values, pt_data):
                                             return_inverse=True,
                                             return_counts=True)
 
+    zero_index = np.where(s_values == 0)[0]
+    # for i in range(len(bin_idx)):
+    #     if bin_idx[i] == zero_index:
+    #         bin_idx[i] = i
+
     # take the cumsum of the counts and normalize by the number of pixels to
     # get the empirical cumulative distribution functions for the source and
     # template images (maps pixel value --> quantile)
@@ -68,7 +73,6 @@ def histForTrain(t_quantiles, t_values, pt_data):
 
     # Reshapes the corresponding values to the indexes and reshapes the array to input
     out_img = interp_t_values[bin_idx].reshape(oldshape)
-    # saveNiiImage(out_img, infos, dst)
     return out_img
 
 

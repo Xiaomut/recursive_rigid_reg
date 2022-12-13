@@ -31,6 +31,15 @@ def getBaseInfo(file="Y:/traindata2/baseimg/base.nii.gz"):
     return t_quantiles, t_values, infos
 
 
+def getBaseInfoRemoveZero(file="Y:/traindata2/baseimg/base.nii.gz"):
+    template, infos = base_util.readNiiImage(file, True)
+    nt_data_array = template.ravel()
+    t_values, t_counts = np.unique(nt_data_array, return_counts=True)
+    t_quantiles = np.cumsum(t_counts).astype(np.float64)
+    t_quantiles /= t_quantiles[-1]
+    return t_quantiles, t_values, infos
+
+
 def getCropImg(imgrec, imgnum, r, limit):
     basedir = "Y:/traindata2"
     filename = os.path.join(basedir, imgnum, f"img{imgrec}.nii.gz")
@@ -46,12 +55,13 @@ def getCropImg(imgrec, imgnum, r, limit):
 
 def getAllHisCropImgs():
     r = base_util.loadJson("files/train_coordinate.json")
-    limit = [220, -80, 128, 128, 128, 128]
+    # limit = [220, -80, 128, 128, 128, 128]
+    limit = [200, -60, 128, 128, 128, 128]
 
     t_quantiles, t_values, infos = getBaseInfo()
 
     errors = []
-    for i in range(2, 124):
+    for i in range(1, 124):
         imgA, fileA = getCropImg("A", f"img{i}", r, limit)
         imgB, fileB = getCropImg("B", f"img{i}", r, limit)
         saveA = fileA.replace("imgA.nii.gz", "imgA_crop_his.nii.gz")
@@ -101,8 +111,54 @@ def getAllHisImgs():
     print(errors)
 
 
+def getAllHisCropImgsByA():
+    r = base_util.loadJson("files/train_coordinate.json")
+    limit = [200, -60, 128, 128, 128, 128]
+
+    infos = base_util.loadJson(file="files/img_infos.json")
+
+    for i in range(2, 124):
+        imgA, fileA = getCropImg("A", f"img{i}", r, limit)
+        imgB, fileB = getCropImg("B", f"img{i}", r, limit)
+        saveA = fileA.replace("imgA.nii.gz", "imgA_crop_his.nii.gz")
+        saveB = fileB.replace("imgB.nii.gz", "imgB_crop_his.nii.gz")
+
+        imgB_his = histmatching.matching(imgA, imgB)
+
+        base_util.saveNiiImage(imgA, infos, saveA)
+        base_util.saveNiiImage(imgB_his, infos, saveB)
+        # break
+
+
+def getTMJImg():
+    base_dir = "Y:/traindata2"
+    t_quantiles, t_values, infos = getBaseInfoRemoveZero(
+        file="Y:/traindata2/baseimg/base_input.nii.gz")
+
+    errors = []
+    for i in range(1, 124):
+        file_dir = os.path.join(base_dir, f"img{i}")
+        fileA = os.path.join(file_dir, "imgA_crop.nii.gz")
+        fileB = os.path.join(file_dir, "imgB_crop.nii.gz")
+        saveA = fileA.replace("imgA.nii.gz", "imgA_input.nii.gz")
+        saveB = fileB.replace("imgB.nii.gz", "imgB_input.nii.gz")
+        imgA = base_util.readNiiImage(fileA)
+        imgB = base_util.readNiiImage(fileB)
+        try:
+            histmatching.histForSave(t_quantiles, t_values, imgA, saveA, infos)
+            histmatching.histForSave(t_quantiles, t_values, imgB, saveB, infos)
+        except Exception as e:
+            print(e)
+            errors.append(i)
+        break
+    print(errors)
+
+
 if __name__ == "__main__":
     # 得到base图像
     # getBaseImg()
     # 处理所有图像
-    getAllHisImgs()
+    # getAllHisCropImgs()
+    # getAllHisImgs()
+    # getAllHisCropImgsByA()
+    getTMJImg()

@@ -79,8 +79,8 @@ def getDataloader(root_dir):
     X_test = image_dirs[ratio:]
 
     r = loadJson("files/train_coordinate.json")
-    limit = [220, -80, 128, 128, 128, 128]
-    # limit = [200, -60, 128, 128, 128, 128]
+    # limit = [220, -80, 128, 128, 128, 128]
+    limit = [200, -60, 128, 128, 128, 128]
 
     params_train = {
         'batch_size': conf.batch_size,

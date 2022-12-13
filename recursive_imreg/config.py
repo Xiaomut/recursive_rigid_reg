@@ -14,7 +14,7 @@ class Config:
     # Networks Params
     epochs = 200
     save_epoch = 100
-    lr = 1e-3  # 学习率
+    lr = 1e-4  # 学习率
     step_size = 20
     gamma = 0.96  # 学习率衰减因子
 
