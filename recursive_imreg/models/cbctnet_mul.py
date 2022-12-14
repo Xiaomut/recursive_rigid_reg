@@ -111,6 +111,18 @@ class FeatureConcat(nn.Module):
         self.fc_loc = nn.Sequential(Linear(48 * mid_ch2, 256), LeakyReLU(0.1),
                                     Dropout(0.3), Linear(256, 6))
 
+        for name, w in self.named_parameters():
+            if "conv" in name:
+                if 'weight' in name:
+                    nn.init.xavier_normal_(w.unsqueeze(0))
+                elif 'bias' in name:
+                    nn.init.constant_(w, 0)
+            if "fc" in name:
+                if 'weight' in name:
+                    nn.init.normal_(w, std=0.0001)
+                elif "bias" in name:
+                    nn.init.zeros_(w)
+
     def forward(self, imgA, imgB, imgA_gt, imgB_gt):
         concat_A = torch.cat((imgA, imgA_gt), dim=1)
         prefea_A1 = self.bn1(self.conv1(concat_A))  # [b, 8, 70, 128, 128]
@@ -135,14 +147,3 @@ class FeatureConcat(nn.Module):
         x = x.view(x.size(0), -1)
         x = self.fc_loc(x)
         return x
-
-
-if __name__ == "__main__":
-    device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
-    x1 = torch.rand(1, 1, 140, 256, 256).to(device)
-    # x2 = torch.rand(1, 1, 2, 2, 2)
-    net = FeatureConcat(8).to(device)
-    print(net)
-    # net = FeaExAndCorr(2).to(device)
-    y = net(x1, x1, x1, x1)
-    print(y.shape)
