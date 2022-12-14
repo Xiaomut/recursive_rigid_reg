@@ -6,7 +6,7 @@ from log import Log
 from utils.image_util import invMatrix, decomposeMatrixDegree, composeMatrixFromDegree, reviseMtxFromCrop, cropImageByPoint, processOutPt
 from utils.base_util import readNiiImage, saveNiiImage, loadJson, resampleNiiImg
 from config import Config as conf
-from models.recurnet_4img import RecursiveCascadeNetwork
+from models import recurnet_4img, recurnet_cbct
 
 
 def getOriThetas(rts, coorA, coorB, shape1, shape2):
@@ -39,18 +39,16 @@ def validation(filenum, datadir="testdata", ifsave=False):
     base_dir = f"{conf.root_path}/{datadir}/img{filenum}"
     log.info(f"--------- filedir: [{datadir} -> img{filenum}] ---------")
 
-    imgA, infos = readNiiImage(os.path.join(base_dir, "imgA_his.nii.gz"), True)
+    imgA, infos = readNiiImage(os.path.join(base_dir, "imgA.nii.gz"), True)
     gt_imgA = readNiiImage(os.path.join(base_dir, "gt_imgA.nii.gz"))
-    imgB = readNiiImage(os.path.join(base_dir, "imgB_his.nii.gz"))
+    imgB = readNiiImage(os.path.join(base_dir, "imgB.nii.gz"))
     gt_imgB = readNiiImage(os.path.join(base_dir, "gt_imgB.nii.gz"))
-    # label_mtx = np.loadtxt(os.path.join(base_dir, "label.txt"))
 
-    r = loadJson(f"files/train_coordinate.json")
-    # limit = [256, -60, 200, 128, 128, 128]
+    limit = [200, -60, 128, 128, 128, 128]
     if "train" in datadir:
-        limit = [220, -80, 128, 128, 128, 128]
+        r = loadJson(f"files/train_coordinate.json")
     else:
-        limit = [200, -60, 128, 128, 128, 128]
+        r = loadJson(f"files/test_coordinate.json")
 
     # 更新一下坐标, 防止溢出
     coorA = r[f"img{filenum}"]["imgA"]
@@ -116,20 +114,23 @@ def validation(filenum, datadir="testdata", ifsave=False):
 
 if __name__ == "__main__":
 
-    nums = conf.n_cascades
-    model_path = "recurse/cas{}/small_his_fullimg/best_recurse.pth".format(
-        nums)
+    model_path = r"recurse\cas3\ori_corr_8\best_recurse.pth"
     state_dict = torch.load(model_path, map_location="cpu")
 
     device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
-    net = RecursiveCascadeNetwork(nums, conf.channel, device, state_dict, True)
+    # model = recurnet_4img.RecursiveCascadeNetwork(conf.n_cascades,
+    #                                               conf.channel, device,
+    #                                               state_dict, True)
+    net = recurnet_cbct.RecursiveCascadeNetwork(conf.n_cascades, 8, 32, device,
+                                                True, True, state_dict, True)
 
     log = Log(filename=f"{conf.save_name}/valid/validation.log",
               mode="a").getlog()
     log.info(f"------- {model_path} -------")
+    log.info(state_dict["epoch"])
     resample_name = f"warped_{conf.save_name}.nii.gz"
 
-    # for filenum in range(15, 16):
-    #     validation(filenum, net_mode="testdata", ifsave=False)
+    for filenum in range(26, 28):
+        validation(filenum, datadir="testdata", ifsave=True)
 
-    validation(83, datadir="traindata2", ifsave=False)
+    # validation(83, datadir="traindata2", ifsave=False)

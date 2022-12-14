@@ -5,7 +5,7 @@ from torch.optim import lr_scheduler, Adam, SGD, RMSprop
 import numpy as np
 from log import Log
 from utils import losses, dataloads, dataloads_pre
-from models import recurnet, recurnet_4img
+from models import recurnet, recurnet_4img, recurnet_cbct
 from config import Config as conf
 
 
@@ -91,8 +91,12 @@ def main(loadpth=None):
     minloss = np.inf
     loss_dict = {'train_loss': [], 'valid_loss': [], 'test_loss': []}
 
-    model = recurnet_4img.RecursiveCascadeNetwork(device=device,
-                                                  midch=conf.channel,
+    # model = recurnet_4img.RecursiveCascadeNetwork(device=device,
+    #                                               midch=conf.channel,
+    #                                               n_cascades=conf.n_cascades)
+    model = recurnet_cbct.RecursiveCascadeNetwork(device=device,
+                                                  midch1=conf.channel,
+                                                  midch2=conf.channel2,
                                                   n_cascades=conf.n_cascades)
 
     trainable_params = []
@@ -101,9 +105,9 @@ def main(loadpth=None):
 
     if loadpth is None:
         log.info(conf.getinfo())
-        optimizer = Adam(trainable_params, lr=conf.lr, betas=(0.5, 0.999))
-        # scheduler = lr_scheduler.StepLR(optimizer, conf.step_size, conf.gamma)
-        scheduler = lr_scheduler.CosineAnnealingWarmRestarts(optimizer, 2, 5)
+        optimizer = Adam(trainable_params, lr=conf.lr)  #, betas=(0.5, 0.999)
+        scheduler = lr_scheduler.StepLR(optimizer, conf.step_size, conf.gamma)
+        # scheduler = lr_scheduler.CosineAnnealingWarmRestarts(optimizer, 2, 5)
     else:
         dic = torch.load(loadpth)
         start_epoch = dic["epoch"]
@@ -159,8 +163,7 @@ def main(loadpth=None):
 if __name__ == "__main__":
 
     base_path = os.path.join(os.getcwd(), conf.save_name)
-    result_path = os.path.join(base_path, f"cas{conf.n_cascades}",
-                               "small_his_fullimg")
+    result_path = os.path.join(base_path, f"cas{conf.n_cascades}", "ori_8")
     os.makedirs(result_path, exist_ok=True)
 
     log = Log(filename=os.path.join(result_path, "train.log"),
@@ -168,10 +171,13 @@ if __name__ == "__main__":
     bestpth_name = os.path.join(result_path, f"best_{conf.save_name}.pth")
     device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
 
-    root_dir = os.path.join(conf.root_path, "traindata2")  # testdata traindata
-    train_iter, valid_iter = dataloads.getDataloader(root_dir)
-    test_iter = dataloads.getTestloader(
-        os.path.join(conf.root_path, "testdata"))
+    # dataloads_pre
+    log.info("preprocessing datas...")
+    root_dir_train = os.path.join(conf.root_path, "traindata2")
+    train_iter, valid_iter = dataloads.getDataloader(root_dir_train)
+    root_dir_test = os.path.join(conf.root_path, "testdata")
+    test_iter = dataloads.getTestloader(root_dir_test)
+    log.info("load datas done.")
 
     loadpth = None
     main(loadpth)

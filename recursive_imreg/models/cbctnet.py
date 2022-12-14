@@ -36,8 +36,6 @@ class FeatureExtraction(nn.Module):
                     nn.init.xavier_normal_(w.unsqueeze(0))
                 elif 'bias' in name:
                     nn.init.constant_(w, 0)
-            else:
-                pass
 
     def forward(self, imgA, imgA_gt):
         concat_image_A = torch.cat((imgA, imgA_gt), dim=1)
@@ -89,13 +87,14 @@ class FeatureCorrelation(nn.Module):
 class FeatureRegression(nn.Module):
     def __init__(self, mid_ch=32):
         super(FeatureRegression, self).__init__()
-        self.bottleneck = nn.Sequential(LeakyReLU(0.1),
-                                        nn.Conv3d(48, mid_ch, 1, 1, 0),
-                                        nn.InstanceNorm3d(mid_ch),
-                                        LeakyReLU(0.1))
-        self.fc_loc = nn.Sequential(Linear(3 * 4 * 4 * mid_ch, 256),
-                                    LeakyReLU(0.1), Dropout(0.3),
-                                    Linear(256, 6))
+        self.bottleneck = nn.Sequential(
+            LeakyReLU(0.1),
+            # 3 * 4 * 4 = 48, 5 * 8 * 8 = 320, 2 * 2 * 2 = 8, 3 * 6 * 4 = 72
+            nn.Conv3d(72, mid_ch, 1, 1, 0),
+            nn.InstanceNorm3d(mid_ch),
+            LeakyReLU(0.1))
+        self.fc_loc = nn.Sequential(Linear(72 * mid_ch, 256), LeakyReLU(0.1),
+                                    Dropout(0.3), Linear(256, 6))
 
         for name, w in self.named_parameters():
             if "fc" in name:
@@ -114,7 +113,7 @@ class FeatureRegression(nn.Module):
 
 class FeatureConcat(nn.Module):
     def __init__(self,
-                 mid_ch1=8,
+                 mid_ch1,
                  mid_ch2=32,
                  normalize_features=False,
                  normalize_matches=False):
@@ -145,7 +144,7 @@ class FeatureConcat(nn.Module):
             correlation = self.FeatureL2Norm(self.relu(correlation))
 
         rt = self.FeatureRegression(correlation)
-        return rt.to(self.device)
+        return rt
 
 
 if __name__ == "__main__":

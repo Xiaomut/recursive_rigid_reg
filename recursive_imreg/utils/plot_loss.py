@@ -25,6 +25,7 @@ def getInfos(logfile):
     train_x, train_y = getMinNum(train_sum)
     valid_x, valid_y = getMinNum(valid_sum)
     test_x, test_y = getMinNum(test_sum)
+    print(f"[file]: {logfile} -> [train]: {(train_x, train_y)}  -> [valid]: {(valid_x, valid_y)}  -> [test]: {(test_x, test_y)}")
     return {
         "train": train_sum,
         "valid": valid_sum,
@@ -64,9 +65,9 @@ def plotLog(files):
 
 if __name__ == "__main__":
     files = [
-        r"recurse\cas3\ori_8\train.log",
+        # r"recurse\cas3\ori_8\train.log",
+        # r"recurse\cas3\fullhis_corr_8\train.log",
         r"recurse\cas3\ori_corr_8\train.log",
-        r"recurse\cas3\fullhis_corr_8\train.log",
     ]
     # for file in files:
     #     plotLog(file, '1')

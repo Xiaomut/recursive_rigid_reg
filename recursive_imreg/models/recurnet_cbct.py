@@ -6,6 +6,7 @@ import sys
 sys.path.append("../")
 sys.path.append("./")
 from models.cbctnet import FeatureConcat
+# from models.cbctnet_mul import FeatureConcat
 
 
 class SpatialTransform(nn.Module):

@@ -34,13 +34,13 @@ def processOutPt(pt, img_shape, limit):
         return False
 
 
-def filterPt():
-    r = loadJson("files/train_coordinate.json")
+def filterPt(file="files/train_coordinate.json"):
+    r = loadJson(file)
     # r = loadJson("files/test_coordinate.json")
     img_shape = (481, 481, 481)
     errors = []
     # limit = [256, -60, 200, 128, 128, 128]
-    limit = [220, -80, 128, 128, 128, 128]
+    limit = [200, -60, 196, 128, 128, 128]
     for k, v in r.items():
         # print(f"----------- {k} -----------")
         vA = v["imgA"]
@@ -54,4 +54,4 @@ def filterPt():
 
 if __name__ == "__main__":
     # pass
-    filterPt()
+    filterPt("files/train_coordinate.json")
