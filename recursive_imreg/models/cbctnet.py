@@ -90,10 +90,10 @@ class FeatureRegression(nn.Module):
         self.bottleneck = nn.Sequential(
             LeakyReLU(0.1),
             # 3 * 4 * 4 = 48, 5 * 8 * 8 = 320, 2 * 2 * 2 = 8, 3 * 6 * 4 = 72
-            nn.Conv3d(72, mid_ch, 1, 1, 0),
+            nn.Conv3d(48, mid_ch, 1, 1, 0),
             nn.InstanceNorm3d(mid_ch),
             LeakyReLU(0.1))
-        self.fc_loc = nn.Sequential(Linear(72 * mid_ch, 256), LeakyReLU(0.1),
+        self.fc_loc = nn.Sequential(Linear(48 * mid_ch, 256), LeakyReLU(0.1),
                                     Dropout(0.3), Linear(256, 6))
 
         for name, w in self.named_parameters():

@@ -18,8 +18,8 @@ class FeaExAndCorr(nn.Module):
         self.conv1 = convolveLeakyReLU(in_c, in_c, 3, 1)
         self.conv2 = convolveLeakyReLU(in_c, in_c * 2, 3, 2)
 
-        self.neck1 = convolveLeakyReLU(neck_c, 1, 1, 1, 0)
-        self.neck2 = convolveLeakyReLU(1, in_c * 2, 1, 1, 0)
+        # self.neck1 = convolveLeakyReLU(neck_c, 1, 1, 1, 0)
+        self.neck2 = convolveLeakyReLU(neck_c, in_c * 2, 3, 1)
 
         self.FeatureL2Norm = FeatureL2Norm()
         self.FeatureCorrelation = FeatureCorrelation()
@@ -49,7 +49,8 @@ class FeaExAndCorr(nn.Module):
             # correlation = self.FeatureL2Norm(self.relu(correlation))
             correlation = self.FeatureL2Norm(correlation)
 
-        corr = self.neck2(self.neck1(correlation))
+        # corr = self.neck2(self.neck1(correlation))
+        corr = self.neck2(correlation)
         return corr, feature_A2, feature_B2
 
 
@@ -109,7 +110,7 @@ class FeatureConcat(nn.Module):
 
         self.active = LeakyReLU(0.1)
         self.fc_loc = nn.Sequential(Linear(48 * mid_ch2, 256), LeakyReLU(0.1),
-                                    Dropout(0.3), Linear(256, 6))
+                                    Dropout(0.4), Linear(256, 6))
 
         for name, w in self.named_parameters():
             if "conv" in name:
