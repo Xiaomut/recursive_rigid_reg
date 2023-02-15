@@ -7,7 +7,7 @@ from torch.utils import data
 sys.path.append("../")
 sys.path.append("./")
 from utils.base_util import getImageDirs, loadJson, readNiiImage, saveNiiImage
-from utils.image_util import cropImageByCenter, invMatrix, decomposeMatrixDegree, imgnorm
+from utils.image_util import cropImageByCenter, invMatrix, decomposeMatrixDegree, imgnorm, reviseMtxToCrop
 from config import Config as conf
 
 class DatasetCenterCrop(data.Dataset):

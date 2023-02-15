@@ -180,17 +180,17 @@ def reviseMtxToCrop(imgA_shape, imgB_shape, mtx_res):
     mtx = deepcopy(mtx_res)
     if mtx.shape == (6, ) or mtx.shape == (1, 6):
         if isinstance(mtx, np.ndarray):
-            mtx.reshape((6, ))
+            mtx = mtx.reshape((6, ))
         else:
-            mtx.view((6, ))
+            mtx = mtx.view((6, ))
         mtx[3] = mtx[3] * rate3
         mtx[4] = mtx[4] * rate2
         mtx[5] = mtx[5] * rate1
     elif mtx.shape == (3, 4) or mtx.shape == (1, 3, 4):
         if isinstance(mtx, np.ndarray):
-            mtx.reshape(1, 3, 4)
+            mtx = mtx.reshape(1, 3, 4)
         else:
-            mtx.view((1, 3, 4))
+            mtx = mtx.view((1, 3, 4))
         mtx[:, 0, 3] = mtx[:, 0, 3] * rate3
         mtx[:, 1, 3] = mtx[:, 1, 3] * rate2
         mtx[:, 2, 3] = mtx[:, 2, 3] * rate1
@@ -201,6 +201,7 @@ def reviseMtxToCrop(imgA_shape, imgB_shape, mtx_res):
 
 def invMatrix(m, change=True, degree=True):
     """对矩阵求逆"""
+    m = m.reshape(3, 4)
     m_add = np.vstack([m, [[0, 0, 0, 1]]])
     m_add_inv = np.linalg.inv(m_add)
     if degree:
