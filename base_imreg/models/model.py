@@ -39,7 +39,7 @@ class Denseblock(nn.Module):
 
 
 class Net(nn.Module):
-    def __init__(self, mid_ch=8, growth_rate=8, layers=[1, 2, 4, 8, 8, 16]):
+    def __init__(self, mid_ch=8, growth_rate=8, layers=[1, 2, 4, 8, 16, 24]):
         super(Net, self).__init__()
 
         self.trans0 = transition(2, mid_ch)
