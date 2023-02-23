@@ -148,10 +148,10 @@ class FeatureConcat(nn.Module):
 
 
 if __name__ == "__main__":
-    device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
-    x1 = torch.rand(1, 1, 140, 256, 256).to(device)
+    # device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
+    # x1 = torch.rand(1, 1, 140, 256, 256).to(device)
     # x2 = torch.rand(1, 1, 2, 2, 2)
-    net = FeatureConcat(8).to(device)
-    # print(net)
-    y = net(x1, x1, x1, x1)
-    print(y)
+    net = FeatureConcat(8)
+    print(net)
+    # y = net(x1, x1, x1, x1)
+    # print(y)

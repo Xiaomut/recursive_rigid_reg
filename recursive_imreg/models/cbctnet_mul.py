@@ -8,8 +8,23 @@ def convolveLeakyReLU(in_c, out_c, k, s, p=1):
                          InstanceNorm3d(out_c))
 
 
+def convolveReLU(in_c, out_c, k, s, p=1):
+    return nn.Sequential(Conv3d(in_c, out_c, k, s, padding=p),
+                         InstanceNorm3d(out_c), ReLU(True))
+
+
+def convolve(in_c, out_c, k, s, p=1):
+    return nn.Sequential(Conv3d(in_c, out_c, k, s, padding=p),
+                         InstanceNorm3d(out_c))
+
+
 class FeaExAndCorr(nn.Module):
-    def __init__(self, in_c, neck_c, norm_features=True, norm_matches=True):
+    def __init__(self,
+                 in_c,
+                 neckin_c=None,
+                 neckout_c=None,
+                 norm_features=True,
+                 norm_matches=True):
         super(FeaExAndCorr, self).__init__()
 
         self.normalize_features = norm_features
@@ -19,12 +34,12 @@ class FeaExAndCorr(nn.Module):
         self.conv2 = convolveLeakyReLU(in_c, in_c * 2, 3, 2)
 
         # self.neck1 = convolveLeakyReLU(neck_c, 1, 1, 1, 0)
-        self.neck2 = convolveLeakyReLU(neck_c, in_c * 2, 3, 1)
+        self.neck2 = convolve(neckin_c, neckout_c, 3, 1)
 
         self.FeatureL2Norm = FeatureL2Norm()
         self.FeatureCorrelation = FeatureCorrelation()
 
-        # self.relu = nn.ReLU(True)
+        self.relu = nn.ReLU(True)
 
         for name, w in self.named_parameters():
             if "conv" in name:
@@ -46,12 +61,12 @@ class FeaExAndCorr(nn.Module):
         correlation = self.FeatureCorrelation(feature_A, feature_B)
         # normalize
         if self.normalize_matches:
+            correlation = self.FeatureL2Norm(self.relu(correlation))
             # correlation = self.FeatureL2Norm(self.relu(correlation))
-            correlation = self.FeatureL2Norm(correlation)
 
         # corr = self.neck2(self.neck1(correlation))
-        corr = self.neck2(correlation)
-        return corr, feature_A2, feature_B2
+        correlation = self.neck2(correlation)
+        return correlation, feature_A2, feature_B2
 
 
 class FeatureL2Norm(nn.Module):
@@ -93,25 +108,45 @@ class FeatureConcat(nn.Module):
 
         self.norm_features = norm_features
         self.norm_matches = norm_matches
+        self.FeatureL2Norm = FeatureL2Norm()
 
         self.conv1 = nn.Conv3d(2, mid_ch1, 3, 2)
         self.bn1 = nn.InstanceNorm3d(mid_ch1)
         self.conv2 = convolveLeakyReLU(mid_ch1, 2 * mid_ch1, 3, 2)
         self.conv3 = convolveLeakyReLU(2 * mid_ch1, 4 * mid_ch1, 3, 2)
 
-        self.ext1 = FeaExAndCorr(4 * mid_ch1, 2304)
-        self.ext2 = FeaExAndCorr(8 * mid_ch1, 320)
-        self.ext3 = FeaExAndCorr(16 * mid_ch1, 48)
+        self.ext1 = FeaExAndCorr(4 * mid_ch1, 2304, 64)
+        self.ext2 = FeaExAndCorr(8 * mid_ch1, 320, 128)
+        self.ext3 = FeaExAndCorr(16 * mid_ch1, 48, 256)
 
-        self.fea_conv1 = convolveLeakyReLU(8 * mid_ch1, 8 * mid_ch1, 3, 1)
-        self.fea_conv2 = convolveLeakyReLU(16 * mid_ch1, 16 * mid_ch1, 3, 2)
-        self.fea_conv3 = convolveLeakyReLU(32 * mid_ch1, 32 * mid_ch1, 3, 2)
-        self.fea_conv4 = convolveLeakyReLU(64 * mid_ch1, mid_ch2, 1, 1, 0)
+        # self.avgpool1 = nn.AvgPool3d((3, 4, 4))
+        # self.avgpool2 = nn.AvgPool3d((1, 2, 2), (2, 2, 2))
+        self.fea_conv1 = convolveReLU(8 * mid_ch1, 32 * mid_ch1, (7, 9, 9),
+                                      (2, 3, 3))
+        self.fea_conv2 = convolveReLU(16 * mid_ch1, 32 * mid_ch1, 3, 2)
 
-        self.active = LeakyReLU(0.1)
-        self.fc_loc = nn.Sequential(Linear(48 * mid_ch2, 256), LeakyReLU(0.1),
-                                    Dropout(0.4), Linear(256, 6))
+        # self.fea_conv1 = convolveLeakyReLU(8 * mid_ch1, 8 * mid_ch1, 3, 1)
+        # self.fea_conv2 = convolveLeakyReLU(16 * mid_ch1, 16 * mid_ch1, 3, 2)
+        # self.fea_conv3 = convolveLeakyReLU(32 * mid_ch1, 32 * mid_ch1, 3, 2)
+        # self.fea_conv4 = convolveLeakyReLU(64 * mid_ch1, mid_ch2, 1, 1, 0)
+        self.fea_conv = convolveReLU(32 * mid_ch1, mid_ch2, 1, 1, 0)
 
+        # add
+        # self.fea_conv1 = convolveReLU(64, 64, 3, 2)
+        # self.fea_conv2 = convolveReLU(64, 64, 3, 2)
+        # self.fea_conv3 = convolveReLU(64, 64, 3, 2)
+        # self.fea_conv4 = convolveReLU(64, mid_ch2, 1, 1, 0)
+
+        self.active = ReLU(True)
+        self.fc_loc = nn.Sequential(
+            Linear(48 * mid_ch2, 256),
+            LeakyReLU(0.1),
+            Dropout(0.3),
+            # Linear(256, 32),
+            # ReLU(True),
+            # Dropout(0.3),
+            Linear(256, 6),
+        )
         for name, w in self.named_parameters():
             if "conv" in name:
                 if 'weight' in name:
@@ -137,14 +172,33 @@ class FeatureConcat(nn.Module):
         fea_corr2, prefea_A4, prefea_B4 = self.ext2(prefea_A3, prefea_B3)
         fea_corr3, prefea_A5, prefea_B5 = self.ext3(prefea_A4, prefea_B4)
 
-        fea_1 = self.fea_conv1(fea_corr1)
-        fea_cat_1 = torch.cat((fea_1, fea_corr1), dim=1)
-        fea_2 = self.fea_conv2(fea_cat_1)
-        fea_cat_2 = torch.cat((fea_2, fea_corr2), dim=1)
-        fea_3 = self.fea_conv3(fea_cat_2)
-        fea_cat_3 = torch.cat((fea_3, fea_corr3), dim=1)
+        fea_corr1_down = self.FeatureL2Norm(self.fea_conv1(fea_corr1))
+        fea_corr2_down = self.FeatureL2Norm(self.fea_conv2(fea_corr2))
+        fea_corr_sum = fea_corr1_down + fea_corr2_down + fea_corr3
+        fea_corr_sum = self.FeatureL2Norm(self.active(fea_corr_sum))
+        x = self.fea_conv(fea_corr_sum)
 
-        x = self.active(self.fea_conv4(fea_cat_3))
+        # fea_1 = self.fea_conv1(fea_corr1)
+        # fea_cat_1 = torch.cat((fea_1, fea_corr1), dim=1)
+        # # fea_cat_1 = fea_1 + fea_corr2
+        # fea_2 = self.fea_conv2(self.FeatureL2Norm(fea_cat_1))
+        # fea_cat_2 = torch.cat((fea_2, fea_corr2), dim=1)
+        # # fea_cat_2 = fea_2 + fea_corr3
+        # fea_3 = self.fea_conv3(self.FeatureL2Norm(fea_cat_2))
+        # fea_cat_3 = torch.cat((fea_3, fea_corr3), dim=1)
+        # x = self.active(self.fea_conv4(self.FeatureL2Norm(fea_cat_3)))
+
         x = x.view(x.size(0), -1)
         x = self.fc_loc(x)
         return x
+
+
+if __name__ == "__main__":
+    device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
+    x1 = torch.rand(1, 1, 140, 256, 256).to(device)
+    # x2 = torch.rand(1, 1, 2, 2, 2)
+    net = FeatureConcat(8).to(device)
+    print(net)
+    # net = FeaExAndCorr(2).to(device)
+    y = net(x1, x1, x1, x1)
+    print(y.shape)
