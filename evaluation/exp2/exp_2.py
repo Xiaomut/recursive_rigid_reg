@@ -28,6 +28,12 @@ def calMetrics(img1, img2, calCC=False, calGC=False, calGD=False):
     return CC, GC, GD
 
 
+def updateCoord(num, r, limit):
+    coord = r[num]["imgA"]
+    coord_new = processOutPt(coord, (481, 481, 481), limit)
+    return coord_new
+
+
 def runSingle(num,
               base_path,
               filetype="0",
@@ -36,13 +42,21 @@ def runSingle(num,
               calGD=False):
     # get images
     imgA = readNiiImage(os.path.join(base_path, "imgA.nii.gz"))
+    imgA_gt = readNiiImage(os.path.join(base_path, "gt_imgA.nii.gz"))
     # warped_part3, elastix, sift
     if filetype == "0":
         imgB = readNiiImage(os.path.join(base_path, "elastix.nii.gz"))
+        imgB_gt = readNiiImage(os.path.join(base_path, "gt_elastix.nii.gz"))
     elif filetype == "1":
         imgB = readNiiImage(os.path.join(base_path, "sift.nii.gz"))
+        imgB_gt = readNiiImage(os.path.join(base_path, "gt_sift.nii.gz"))
     elif filetype == "2":
         imgB = readNiiImage(os.path.join(base_path, "warped_part3.nii.gz"))
+        imgB_gt = readNiiImage(os.path.join(base_path, "gt_imgB.nii.gz"))
+
+    coord_new = updateCoord(num, r, limit)
+    imgA_crop = cropImageByPoint(imgA, coord_new, limit)
+    imgB_crop = cropImageByPoint(imgB, coord_new, limit)
 
     return m_cc, m_gc, m_gd
 
@@ -108,6 +122,7 @@ if __name__ == "__main__":
 
     log = Log(filename="exp2/log/exp2.log").getlog()
 
-    # runAll(num)
-    # runSingle(num)
+    r = loadJson("part5/jsonfile/test_coordinate.json")
+    limit = [200, -60, 128, 128, 128, 128]
+
     finalCal()
