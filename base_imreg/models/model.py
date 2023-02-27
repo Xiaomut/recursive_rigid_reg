@@ -67,12 +67,15 @@ class Net(nn.Module):
                                  mid_ch * 64)
 
         self.fc = nn.Sequential(
-            nn.Linear(4096, 128),
+            nn.Linear(4096, 1024),
             nn.ReLU(True),
-            nn.Dropout(0.2),
-            nn.Linear(128, 32),
+            nn.Dropout(0.3),
+            nn.Linear(1024, 256),
             nn.ReLU(True),
-            nn.Dropout(0.2),
+            nn.Dropout(0.3),
+            nn.Linear(256, 32),
+            nn.ReLU(True),
+            nn.Dropout(0.3),
             nn.Linear(32, 6),
         )
 

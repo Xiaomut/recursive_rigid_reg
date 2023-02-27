@@ -72,10 +72,11 @@ def validation(filenum, net_mode="test", ifsave=False):
 
 if __name__ == "__main__":
 
-    model_path = f"result/best_result.pth"
+    model_path = r"result\pth1632\result_B2A.pth"
     # 一些基本设置
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-    net = model.Net(conf.midch, conf.growthrate).to(device)
+    net = model.Net(conf.midch, conf.growthrate,
+                    [1, 2, 4, 8, 16, 32]).to(device)
     try:
         net.load_state_dict(torch.load(model_path))
     except:
