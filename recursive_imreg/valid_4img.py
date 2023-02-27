@@ -114,7 +114,7 @@ def validation(filenum, datadir="testdata", ifsave=False):
 
 if __name__ == "__main__":
 
-    model_path = r"recurse\cas3\ori_corr_8\best_recurse.pth"
+    model_path = r"recurse\cas3\ori_corr_0832\best_recurse.pth"
     state_dict = torch.load(model_path, map_location="cpu")
 
     device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
