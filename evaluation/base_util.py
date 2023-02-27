@@ -25,6 +25,19 @@ def saveJson(adict, save_file):
         json.dump(adict, f)
 
 
+def saveJsonAdd(adict, save_file):
+    """追加模式存取json, 方便读取"""
+    if os.path.isfile(save_file) and os.path.getsize(save_file) > 0:
+        r = loadJson(save_file)
+        with open(save_file, 'w') as f:
+            # 添加内容
+            r = dict(r, **adict)
+            json.dump(r, f)
+    else:
+        with open(save_file, 'w') as f:
+            json.dump(adict, f)
+
+
 def readNiiImage(file, otherinfo=False):
     """读取图像, 如果需要其他信息, 则为True"""
     img = sitk.ReadImage(file)
@@ -47,7 +60,7 @@ def saveNiiImage(array, infos, filename):
     sitk.WriteImage(img, fileName=filename)
 
 
-def resampleNiiImg(mtx, img, infos, save_file=None, mode="bilinear"):
+def resampleNiiImg(mtx, img, infos=None, save_file=None, mode="bilinear"):
     """对输入图像进行重采样, mode 可选 ['bilinear', 'nearest']"""
     grid = F.affine_grid(mtx, img.size(), align_corners=False).float()
     resample = F.grid_sample(img, grid, mode=mode, align_corners=False)
