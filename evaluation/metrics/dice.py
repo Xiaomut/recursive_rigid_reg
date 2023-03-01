@@ -9,7 +9,6 @@ def dice(target, predictive, ep=1e-8):
     return (intersection / union).item()
 
 
-
 class DiceCoeff(Function):
     """Dice coeff for individual examples"""
     def forward(self, input, target):
@@ -46,4 +45,4 @@ def dice_coeff(input, target):
     for i, c in enumerate(zip(input, target)):
         s = s + DiceCoeff().forward(c[0], c[1])
 
-    return s / (i + 1)
+    return (s / (i + 1)).item()

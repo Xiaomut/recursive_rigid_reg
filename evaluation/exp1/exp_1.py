@@ -8,7 +8,7 @@ sys.path.append("./")
 from log import Log
 from utils.base_util import readNiiImage, resampleNiiImg, loadJson, saveJson
 from metrics import dice, gd, ssim3d, ncc, gc
-from model import Net
+from exp1.model import Net
 from exp1.image_util import imgnorm, cropImageByCenter, reviseMtxFromCrop, composeMatrixFromDegree
 
 
@@ -58,7 +58,7 @@ def warp(imgA, imgB, net, ifsave=False):
 
 
 def calMetrics(img1, img2, calCC=False, calGC=False, calGD=False):
-    CC, GC, GD = None, None, None
+    CC, GC, GD = 0, 0, 0
     if calCC:
         CC = ncc.pearson_correlation(img1, img2).item()
     if calGC:

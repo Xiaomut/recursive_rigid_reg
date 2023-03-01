@@ -14,44 +14,6 @@ def cropImageByCenter(array, size=256):
     return array
 
 
-def cropImageByPoint(array, pt, limit):
-    """ 
-    以pt为中心裁剪图像, 不按照各个边长一致裁剪, 尽可能取较大的图像块
-    设定截取块大小为(196, 256, 328)
-    """
-    p1, p2, p3, p4, p5, p6 = pt[2] - limit[0], pt[2] + limit[1], pt[1] - limit[
-        2], pt[1] + limit[3], pt[0] - limit[4], pt[0] + limit[5]
-    array = array[p1:p2, p3:p4, p5:p6]
-    return array
-
-
-def processOutPt(pt, img_shape, limit):
-    """ 限制输出点的范围 """
-    assert len(img_shape) == 3, "array must be 3D image"
-    ori_D, ori_H, ori_W = img_shape
-
-    limits = [
-        pt[2] - limit[0], pt[2] + limit[1], pt[1] - limit[2], pt[1] + limit[3],
-        pt[0] - limit[4], pt[0] + limit[5]
-    ]
-    if max(limits) < ori_D and min(limits) >= 0:
-        return pt
-    else:
-        if limits[0] < 0:
-            pt[2] = limit[0] + 1
-        if limits[1] > ori_D:
-            pt[2] = ori_D - limit[1] - 1
-        if limits[2] < 0:
-            pt[1] = limit[2] + 1
-        if limits[3] > ori_H:
-            pt[1] = ori_H - limit[3] - 1
-        if limits[4] < 0:
-            pt[0] = limit[4] + 1
-        if limits[5] > ori_W:
-            pt[0] = ori_W - limit[5] - 1
-        return pt
-
-
 def rotationMatrixToEulerAngles(R):
     """由旋转矩阵变成三个方向的旋转角度"""
     sy = math.sqrt(R[0, 0] * R[0, 0] + R[1, 0] * R[1, 0])

@@ -64,7 +64,7 @@ def resampleNiiImg(mtx, img, infos=None, save_file=None, mode="bilinear"):
     """对输入图像进行重采样, mode 可选 ['bilinear', 'nearest']"""
     grid = F.affine_grid(mtx, img.size(), align_corners=False).float()
     resample = F.grid_sample(img, grid, mode=mode, align_corners=False)
+    resample_save = resample.type(torch.ShortTensor).squeeze().squeeze()
     if save_file is not None:
-        resample_save = resample.type(torch.ShortTensor).squeeze().squeeze()
         saveNiiImage(resample_save.numpy(), infos, save_file)
-    return resample
+    return resample, resample_save.numpy()
