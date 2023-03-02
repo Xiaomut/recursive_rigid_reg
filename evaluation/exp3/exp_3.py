@@ -6,23 +6,21 @@ import numpy as np
 sys.path.append("../")
 sys.path.append("./")
 from log import Log
-from base_util import readNiiImage, resampleNiiImg, loadJson, saveJson
+from base_util import readNiiImage, saveNiiImage, resampleNiiImg, loadJson, saveJson
 from metrics import dice, gd, ssim3d, ncc, gc
-from exp2.model import Net
 from exp2.image_util import cropImageByPoint, processOutPt, imgnorm, reviseMtxFromCrop, composeMatrixFromDegree
+from exp3.models import recurnet_4img, recurnet_cbct, recurnet_cbct_pro
 
 
 def imgToTensor(img):
     return torch.FloatTensor(img).unsqueeze(0).unsqueeze(0)
 
 
-def loadModel(model_path):
+def loadModel(model_path, n):
     """ load the net """
-    net = Net(8, 4)
-    net_params = torch.load(model_path,
-                            map_location=torch.device('cpu'))["net"]
-    net.load_state_dict(net_params)
-    net.eval()
+    s = torch.load(model_path, map_location="cpu")
+    device = torch.device('cpu')
+    net = recurnet_4img.RecursiveCascadeNetwork(n, 8, device, s, True)
     return net
 
 
@@ -64,16 +62,16 @@ def getCoord(num):
     return coorA, coorB
 
 
-def getImgs(num, base_dir):
-    imgA = readNiiImage(os.path.join(base_dir, "imgA.nii.gz"))
-    gt_imgA = readNiiImage(os.path.join(base_dir, "gt_imgA.nii.gz"))
-    imgB = readNiiImage(os.path.join(base_dir, "imgB.nii.gz"))
-    gt_imgB = readNiiImage(os.path.join(base_dir, "gt_imgB.nii.gz"))
+def getImgs(num, base_path):
+    imgA = readNiiImage(os.path.join(base_path, "imgA.nii.gz"))
+    gt_imgA = readNiiImage(os.path.join(base_path, "gt_imgA.nii.gz"))
+    imgB = readNiiImage(os.path.join(base_path, "imgB.nii.gz"))
+    gt_imgB = readNiiImage(os.path.join(base_path, "gt_imgB.nii.gz"))
 
     return imgA, gt_imgA, imgB, gt_imgB
 
 
-def getAddTheta(coorA, coorB):
+def getOriThetas(rts, coorA, coorB, shape1, shape2):
     t = np.array([
         coorB[0] - coorA[0], coorB[1] - coorA[1], coorB[2] - coorA[2]
     ]) / 481 * -2
@@ -82,7 +80,21 @@ def getAddTheta(coorA, coorB):
         [0, 0, 0, t[1]],
         [0, 0, 0, t[2]],
     ])
-    return torch.FloatTensor(theta_add * -1)
+
+    rts = [theta.detach() for theta in rts]
+
+    mtxs = []  # save crop thetas
+    for rt in rts:
+        mtxs.append(composeMatrixFromDegree(rt))
+
+    mtx_revises = []
+    for mtx in mtxs:
+        mtx_revises.append(reviseMtxFromCrop(shape1, shape2, mtx))
+
+    mtx_revises[0] = torch.add(torch.tensor(theta_add * -1),
+                               mtx_revises[0]).type(torch.float32)
+
+    return mtx_revises
 
 
 def warp(num, net, ifsave=False):
@@ -91,41 +103,64 @@ def warp(num, net, ifsave=False):
     coorA, coorB = getCoord(num)
     imgA, gt_imgA, imgB, gt_imgB = getImgs(num, base_path)
 
-    imgA_input = imgA * gt_imgA
-    imgB_input = imgB * gt_imgB
-    imgA_crop = cropImageByPoint(imgA_input, coorA, limit)
-    imgB_crop = cropImageByPoint(imgB_input, coorB, limit)
+    # 截取原图像
+    imgA_crop = cropImageByPoint(imgA, coorA, limit)
+    imgB_crop = cropImageByPoint(imgB, coorB, limit)
+    # saveNiiImage(imgA_crop, infos, os.path.join(base_path, "imgA_crop.nii.gz"))
+    # saveNiiImage(imgB_crop, infos, os.path.join(base_path, "imgB_crop.nii.gz"))
 
-    imgA_crop = imgnorm(imgA_crop)
-    imgB_crop = imgnorm(imgB_crop)
+    # 截取分割图像并保存
+    imgA_gt_crop = cropImageByPoint(gt_imgA, coorA, limit)
+    imgB_gt_crop = cropImageByPoint(gt_imgB, coorB, limit)
+    # saveNiiImage(imgA_gt_crop, infos, os.path.join(base_path, "gt_imgA_crop.nii.gz"))
+    # saveNiiImage(imgB_gt_crop, infos, os.path.join(base_path, "gt_imgB_crop.nii.gz"))
+
+    # 得到下颌骨剪切后的图像并保存
+    imgA_input = imgA_crop * imgA_gt_crop
+    imgB_input = imgB_crop * imgB_gt_crop
+    # saveNiiImage(imgA_input, infos, os.path.join(base_path, "imgA_crop.nii.gz"))
+    # saveNiiImage(imgB_input, infos, os.path.join(base_path, "imgB_crop.nii.gz"))
 
     imgA_tensor = imgToTensor(imgA_crop)
     imgB_tensor = imgToTensor(imgB_crop)
-
-    pred_degree = net(imgA_tensor, imgB_tensor)
-    fake_mtx = composeMatrixFromDegree(pred_degree.detach().numpy(),
-                                       change=True)
-    pred_mtx_revise = reviseMtxFromCrop(imgA.shape, imgA_crop.shape, fake_mtx)
-
-    # get theta_add and revise the matrix, `fake theta` is the final matrix
-    theta_add = getAddTheta(coorA, coorB)
-    fake_theta = torch.add(theta_add, pred_mtx_revise).type(torch.float32)
-
-    infos = loadJson("files/img_infos.json")
-    ori_save_name = os.path.join(base_path, resample_name)
-    seg_name = ori_save_name.replace("_now", "_seg")
-
     img_o_tensor = imgToTensor(imgB)
+    imgA_gt_tensor = imgToTensor(imgA_gt_crop)
+    imgB_gt_tensor = imgToTensor(imgB_gt_crop)
     img_gt_tensor = imgToTensor(gt_imgB)
+
+    results = net(imgA_tensor, imgB_tensor, imgA_gt_tensor, imgB_gt_tensor)
+    if len(results) == 3:
+        stem_results, thetas, stem_results_gt = results
+    if len(results) == 5:
+        stem_results, thetas, stem_results_gt, feaA_pro, feaB_pro = results
+
+    save_name = os.path.join(base_path, resample_name)
+
+    # get final warped
+    thetas_ori = getOriThetas(thetas, coorA, coorB, imgA.shape,
+                              imgB_crop.shape)
+    warped = img_o_tensor
+    warped_gt = img_gt_tensor
+    for i, (stem_result, theta_o, stem_result_gt) in enumerate(
+            zip(stem_results, thetas_ori, stem_results_gt)):
+        # 需要将其相乘进行存储
+        warped_crop = (stem_result *
+                       stem_result_gt).squeeze(0).squeeze(0).cpu().detach()
+        # 保存被一个阶段的图像
+        # saveNiiImage(warped_gt.numpy(), infos, save_name.replace(".nii.gz", f"_crop_{nums}{i+1}.nii.gz"))
+        # warped = resampleNiiImg(theta_o, warped, infos, save_name.replace(".nii.gz", f"_{nums}{i+1}.nii.gz"))
+        warped, warped_numpy = resampleNiiImg(theta_o, warped)
+        warped_gt, warped_gt_numpy = resampleNiiImg(theta_o,
+                                                    warped_gt,
+                                                    mode="nearest")
     if ifsave:
-        _, warped_img = resampleNiiImg(fake_theta, img_o_tensor, infos,
-                                       ori_save_name)
-        _, warped_img_gt = resampleNiiImg(fake_theta, img_gt_tensor, infos,
-                                          seg_name)
-    else:
-        _, warped_img = resampleNiiImg(fake_theta, img_o_tensor)
-        _, warped_img_gt = resampleNiiImg(fake_theta, img_gt_tensor)
-    return imgA_crop, imgA_input, warped_img, warped_img_gt
+        # 只保存最后的图像
+        warped = warped.type(torch.ShortTensor).squeeze().squeeze().numpy()
+        saveNiiImage(warped_crop.numpy(), infos,
+                     save_name.replace(".nii.gz", "_crop_final.nii.gz"))
+        saveNiiImage(warped, infos,
+                     save_name.replace(".nii.gz", "_final.nii.gz"))
+    return imgA_crop, imgA_input, warped_numpy, warped_gt_numpy
 
 
 def runSingle(num,
@@ -150,7 +185,7 @@ def runSingle(num,
         net = loadModel(model_path)
         _, _, imgB, gt_imgB = warp(num, net, save_photo)
 
-    if onlySave:
+    if onlySave and filetype == "2":
         exit(0)
 
     coorA, _ = getCoord(num)
@@ -175,6 +210,7 @@ if __name__ == "__main__":
 
     data_path = "Y:/testdata/"
     r = loadJson("files/test_coordinate.json")
+    infos = loadJson("files/img_infos.json")
     limit = [200, -60, 128, 128, 128, 128]
 
     # need change before running codes
