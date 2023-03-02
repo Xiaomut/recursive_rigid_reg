@@ -101,8 +101,3 @@ class VTNAffineStem(nn.Module):
         rt = self.fc_loc(xs)
 
         return rt
-
-
-if __name__ == "__main__":
-    net = VTNAffineStem(channels=8)
-    print(net)
