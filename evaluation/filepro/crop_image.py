@@ -1,5 +1,8 @@
 import os
-import numpy as np
+import sys
+
+sys.path.append("../")
+sys.path.append("./")
 from base_util import readNiiImage, saveNiiImage, loadJson
 
 
@@ -25,25 +28,31 @@ def cropImageByPoint(array, pt, limit):
 
 
 def loadImg(imgnum, imgrec):
-    """ load image by `num` and `A` or `B` """
+    """ load image by `num` and `imgA`, `imgB`, `elastix`, `sift` """
     base_path = os.path.join(data_path, f"img{imgnum}")
-    basedir = os.path.join(base_path, f"img{imgnum}")
 
-    img_file = os.path.join(basedir, f"img{imgrec}.nii.gz")
-    img_gt_file = os.path.join(basedir, f"gt_img{imgrec}.nii.gz")
+    img_file = os.path.join(base_path, f"{imgrec}.nii.gz")
+    if "now" not in imgrec:
+        img_gt_file = os.path.join(base_path, f"gt_{imgrec}.nii.gz")
+        img_gt_file = img_gt_file.replace("gt_elastix", "gt_elstix")
+    else:
+        img_gt_file = os.path.join(base_path, f"{imgrec}.nii.gz")
+        img_gt_file = img_gt_file.replace("now", "seg")
 
     img, infos = readNiiImage(img_file, True)
-    img_gt = readNiiImage(img_gt_file)
+    try:
+        img_gt = readNiiImage(img_gt_file)
+    except:
+        img_gt = None
 
     return img, img_gt, img_file, img_gt_file, infos
 
 
-def changeName(img_file, img_gt_file, repname):
+def changeName(img_file, img_gt_file, imgrec, repname):
     """ replace name """
-    img_crop_name = img_file.replace("imgA", f"imgA_{repname}")
-    img_crop_name = img_crop_name.replace("imgB", f"imgB_{repname}")
-    gt_crop_name = img_gt_file.replace("gt_imgA", f"gt_imgA_{repname}")
-    gt_crop_name = gt_crop_name.replace("gt_imgB", f"gt_imgB_{repname}")
+    img_crop_name = img_file.replace(imgrec, f"{imgrec}_{repname}")
+    gt_crop_name = img_gt_file.replace("elstix", "elastix")
+    gt_crop_name = gt_crop_name.replace(imgrec, f"{imgrec}_{repname}")
     return img_crop_name, gt_crop_name
 
 
@@ -74,7 +83,7 @@ def processOutPt(pt, img_shape, limit):
         return pt
 
 
-def saveCtCropImg(imgnum, imgrec, ifdot=False, repname="ct_crop"):
+def saveCtCropImg(imgnum, imgrec, ifdot=False, ifgt=False, repname="ct_crop"):
     """
     @param imgnum: int. img file num, such as 1, 2,..., 44
     @param imgrec: `A`, `B`. fixed image or moving image, `A` is reference image `B` is moving image.
@@ -83,7 +92,8 @@ def saveCtCropImg(imgnum, imgrec, ifdot=False, repname="ct_crop"):
     # read image
     img, img_gt, img_file, img_gt_file, infos = loadImg(imgnum, imgrec)
     img_crop = cropImageByCenter(img, size=256)
-    img_gt_crop = cropImageByCenter(img_gt, size=256)
+    if img_gt is not None:
+        img_gt_crop = cropImageByCenter(img_gt, size=256)
 
     if ifdot:
         img_save = img_crop * img_gt_crop
@@ -91,16 +101,19 @@ def saveCtCropImg(imgnum, imgrec, ifdot=False, repname="ct_crop"):
         img_save = img_crop
 
     # change name
-    img_crop_name, gt_crop_name = changeName(img_file, img_gt_file, repname)
+    img_crop_name, gt_crop_name = changeName(img_file, img_gt_file, imgrec,
+                                             repname)
 
     saveNiiImage(img_save, infos, img_crop_name)
-    saveNiiImage(img_gt_crop, infos, gt_crop_name)
+    if ifgt:
+        saveNiiImage(img_gt_crop, infos, gt_crop_name)
 
 
 def savePtCropImg(imgnum,
                   imgrec,
                   use_valid=False,
                   ifdot=False,
+                  ifgt=False,
                   repname="pt_crop"):
     """
     @param imgnum: int. img file num, such as 1, 2,..., 44
@@ -113,7 +126,7 @@ def savePtCropImg(imgnum,
     limit = [200, -60, 128, 128, 128, 128]
 
     if use_valid:
-        coord = r[f"img{imgnum}"][f"imgA"]
+        coord = r[f"img{imgnum}"]["imgA"]
     else:
         coord = r[f"img{imgnum}"][f"img{imgrec}"]
 
@@ -122,22 +135,28 @@ def savePtCropImg(imgnum,
 
     new_coord = processOutPt(coord, img.shape, limit)
     img_crop = cropImageByPoint(img, new_coord, limit)
-    img_gt_crop = cropImageByPoint(img_gt, new_coord, limit)
+    if img_gt is not None:
+        img_gt_crop = cropImageByPoint(img_gt, new_coord, limit)
 
-    if ifdot:
+    if ifdot and img_gt is not None:
         img_save = img_crop * img_gt_crop
     else:
         img_save = img_crop
 
     # change name
-    img_crop_name, gt_crop_name = changeName(img_file, img_gt_file, repname)
+    img_crop_name, gt_crop_name = changeName(img_file, img_gt_file, imgrec,
+                                             repname)
 
     saveNiiImage(img_save, infos, img_crop_name)
-    saveNiiImage(img_gt_crop, infos, gt_crop_name)
+    if ifgt:
+        saveNiiImage(img_gt_crop, infos, gt_crop_name)
 
 
 if __name__ == "__main__":
     data_path = "Y:/testdata/"
-    num = 1
+    num = 4
 
-    savePtCropImg(num, "A", False, repname="pt_crop")
+    # saveCtCropImg(num, "imgA", False, False, repname="ct_crop")
+    # saveCtCropImg(num, "warped_part3", False, False, repname="ct_crop")
+    savePtCropImg(num, "imgA", True, True, False, repname="pt_crop")
+    savePtCropImg(num, "exp2__now", True, True, False, repname="pt_crop")

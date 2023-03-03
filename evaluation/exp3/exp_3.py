@@ -8,7 +8,7 @@ sys.path.append("./")
 from log import Log
 from base_util import readNiiImage, saveNiiImage, resampleNiiImg, loadJson, saveJson
 from metrics import dice, gd, ssim3d, ncc, gc
-from exp2.image_util import cropImageByPoint, processOutPt, imgnorm, reviseMtxFromCrop, composeMatrixFromDegree
+from exp3.image_util import cropImageByPoint, processOutPt, reviseMtxFromCrop, composeMatrixFromDegree, cropImageByPointTest
 from exp3.models import recurnet_4img, recurnet_cbct, recurnet_cbct_pro
 
 
@@ -193,12 +193,12 @@ def runSingle(num,
 
     coorA, _ = getCoord(num)
     # crop image and get TMJ
-    imgA_input = imgA * gt_imgA
-    imgB_input = imgB * gt_imgB
-    imgA_crop = imgToTensor(cropImageByPoint(imgA_input, coorA, limit))
-    gt_imgA_crop = imgToTensor(cropImageByPoint(gt_imgA, coorA, limit))
-    imgB_crop = imgToTensor(cropImageByPoint(imgB_input, coorA, limit))
-    gt_imgB_crop = imgToTensor(cropImageByPoint(gt_imgB, coorA, limit))
+    imgA_input = imgA  # * gt_imgA
+    imgB_input = imgB  # * gt_imgB
+    imgA_crop = imgToTensor(cropImageByPointTest(imgA_input, coorA, limit))
+    gt_imgA_crop = imgToTensor(cropImageByPointTest(gt_imgA, coorA, limit))
+    imgB_crop = imgToTensor(cropImageByPointTest(imgB_input, coorA, limit))
+    gt_imgB_crop = imgToTensor(cropImageByPointTest(gt_imgB, coorA, limit))
 
     m_cc, m_gc, m_gd, m_dice = calMetrics(imgA_crop, imgB_crop, gt_imgA_crop,
                                           gt_imgB_crop, calCC, calGC, calGD,
@@ -225,14 +225,20 @@ if __name__ == "__main__":
     post = "_pro" if pro else ""
     model_name = f"cas{n}{pre}{post}"  # la2.5  la2  la1
     json_path = "exp3/exp3.json"
-    log_name = f"exp3/log/{model_name}{post}.log"
+    log_name = f"exp3/log/{model_name}.log"
     model_path = f"X:/Codes/recursive_imreg/recurse/cas{n}/cur{pre}{post}_0832/best_recurse.pth"
     resample_name = f"exp3_{model_name}_now.nii.gz"  # _la2.5  _la2  _la1
 
     log = Log(filename=log_name, mode="w").getlog()
+    if save_photo == True:
+        log = Log(filename="exp3/log/save_photo.log", mode="w").getlog()
 
     # !!! Attention !!! type `0` and `1` only run once
-    for num in range(4, 5):
+    for num in range(1, 45):
         calCC, calGC, calGD, calDice = True, True, True, True
+        # m_cc1, m_gc1, m_gd1, m_dice1 = runSingle(num, n, "0", calCC, calGC, calGD,
+        #                                          calDice)
+        # m_cc2, m_gc2, m_gd2, m_dice2 = runSingle(num, n, "1", calCC, calGC, calGD,
+        #                                          calDice)
         m_cc3, m_gc3, m_gd3, m_dice3 = runSingle(num, n, "2", calCC, calGC,
                                                  calGD, calDice, onlySave)
