@@ -92,11 +92,16 @@ def main(loadpth=None):
     log.info(conf.getinfo())
     dic = torch.load(loadpth)
     model.load_state_dict(dic["net"])
+    for name, w in model.named_parameters():
+        if "fc" in name:
+            if 'weight' in name:
+                nn.init.normal_(w, std=0.001)
+            elif "bias" in name:
+                nn.init.zeros_(w)
 
-    optimizer = torch.optim.Adam(net.parameters(),
+    optimizer = torch.optim.Adam(model.parameters(),
                                  lr=conf.lr,
-                                 betas=(conf.b1, conf.b2),
-                                 weight_decay=conf.decay)
+                                 weight_decay=1e-5)
     scheduler = lr_scheduler.StepLR(optimizer,
                                     step_size=conf.step_size,
                                     gamma=conf.gamma)
@@ -126,8 +131,7 @@ def main(loadpth=None):
         infos = {}
         infos["epoch"] = epoch + 1
         infos["scheduler"] = scheduler
-        for i, submodel in enumerate(model.stems):
-            infos[f"cascade_{i}"] = submodel.state_dict()
+        infos[f"net"] = model.state_dict()
         infos["optim"] = optimizer
         if test_loss < minloss:
             minloss = test_loss
@@ -147,7 +151,7 @@ def main(loadpth=None):
 if __name__ == "__main__":
 
     base_path = os.path.join(os.getcwd(), conf.save_name)
-    result_path = os.path.join(base_path, f"cas{conf.n_cascades}", "ori_8")
+    result_path = os.path.join(base_path, "results")
     os.makedirs(result_path, exist_ok=True)
 
     log = Log(filename=os.path.join(result_path, "train.log"),
@@ -163,5 +167,5 @@ if __name__ == "__main__":
     test_iter = dataloads.getTestloader(root_dir_test)
     log.info("load datas done.")
 
-    loadpth = None
+    loadpth = "/home/wangs/Exp-New/part6_3_seg/result/la2.5/best_part6_3_seg_B2A.pth"
     main(loadpth)
