@@ -6,7 +6,7 @@ import numpy as np
 sys.path.append("../")
 sys.path.append("./")
 from log import Log
-from utils.base_util import readNiiImage, resampleNiiImg, loadJson, saveJson
+from base_util import readNiiImage, resampleNiiImg, loadJson, saveJson
 from metrics import dice, gd, ssim3d, ncc, gc
 from exp1.model import Net
 from exp1.image_util import imgnorm, cropImageByCenter, reviseMtxFromCrop, composeMatrixFromDegree
@@ -109,42 +109,14 @@ def runSingle(num,
     imgB_crop = imgToTensor(cropImageByCenter(imgB))
     m_cc, m_gc, m_gd = calMetrics(imgA_crop, imgB_crop, calCC, calGC, calGD)
     log.info(
-        f"[file {num} Type {filetype}] -> [cc: {m_cc:.4f}] -> [gc: {m_gc:.4f}]"
+        f"[file {num} Type {filetype}] -> [cc: {m_cc:.4f}] -> [gc: {m_gc:.4f}] -> [gd: {m_gd:.4f}]"
     )
     return m_cc, m_gc, m_gd
 
 
-def initJson(json_path):
-    result = {
-        "elastix": {
-            "cc": [],
-            "gc": [],
-            "gd": []
-        },
-        "sift": {
-            "cc": [],
-            "gc": [],
-            "gd": []
-        },
-        "warp": {
-            "cc": [],
-            "gc": [],
-            "gd": []
-        }
-    }
-    saveJson(result, json_path)
-    return result
-
-
 def finalCal():
-    if not os.path.exists(json_path):
-        result = initJson(json_path)
-    else:
-        result = loadJson(json_path)
-    calCC, calGC, calGD = True, True, False
 
     errors = []
-
     for num in range(1, 45):
         try:
             base_path = os.path.join(data_path, f"img{num}")
@@ -154,15 +126,6 @@ def finalCal():
                                             calGD)
             m_cc3, m_gc3, m_gd3 = runSingle(num, base_path, "2", calCC, calGC,
                                             calGD)
-            result["elastix"]["cc"].append(m_cc1)
-            result["elastix"]["gc"].append(m_gc1)
-            result["elastix"]["gd"].append(m_gd1)
-            result["sift"]["cc"].append(m_cc2)
-            result["sift"]["gc"].append(m_gc2)
-            result["sift"]["gd"].append(m_gd2)
-            result["warp"]["cc"].append(m_cc3)
-            result["warp"]["gc"].append(m_gc3)
-            result["warp"]["gd"].append(m_gd3)
         except Exception as e:
             errors.append(num)
             log.info(f"--- file {num} has something wrong {e} ---")
@@ -176,6 +139,7 @@ if __name__ == "__main__":
     json_path = "exp1/exp1.json"
 
     log = Log(filename="exp1/log/exp1.log").getlog()
+    calCC, calGC, calGD = True, True, True
 
     # runAll(num)
     # runSingle(num)

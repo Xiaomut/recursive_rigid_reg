@@ -91,11 +91,7 @@ class Net(nn.Module):
         out = x6.view(x.size(0), -1)
         rt = self.fc(out)
 
-        r = torch.clamp(rt[:, :3], -np.pi, np.pi)
-        t = torch.clamp(rt[:, 3:], -0.9, 0.9)
-        out = torch.cat([r, t], dim=1)
-
-        return out
+        return rt
 
 
 if __name__ == "__main__":

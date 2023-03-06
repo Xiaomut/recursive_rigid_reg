@@ -96,8 +96,8 @@ def warp(num, net, ifsave=False):
     imgA_crop = cropImageByPoint(imgA_input, coorA, limit)
     imgB_crop = cropImageByPoint(imgB_input, coorB, limit)
 
-    imgA_crop = imgnorm(imgA_crop)
-    imgB_crop = imgnorm(imgB_crop)
+    # imgA_crop = imgnorm(imgA_crop)
+    # imgB_crop = imgnorm(imgB_crop)
 
     imgA_tensor = imgToTensor(imgA_crop)
     imgB_tensor = imgToTensor(imgB_crop)
@@ -121,10 +121,13 @@ def warp(num, net, ifsave=False):
         _, warped_img = resampleNiiImg(fake_theta, img_o_tensor, infos,
                                        ori_save_name)
         _, warped_img_gt = resampleNiiImg(fake_theta, img_gt_tensor, infos,
-                                          seg_name)
+                                          seg_name, "nearest")
+        log.info(f"save file: {ori_save_name} done!")
     else:
         _, warped_img = resampleNiiImg(fake_theta, img_o_tensor)
-        _, warped_img_gt = resampleNiiImg(fake_theta, img_gt_tensor)
+        _, warped_img_gt = resampleNiiImg(fake_theta,
+                                          img_gt_tensor,
+                                          mode="nearest")
     return imgA_crop, imgA_input, warped_img, warped_img_gt
 
 
@@ -178,15 +181,24 @@ if __name__ == "__main__":
     limit = [200, -60, 128, 128, 128, 128]
 
     # need change before running codes
-    save_photo = False  # decide if save the warped image
-    onlySave = False  # decide if calculate the metrics
-    model_name = ""  # la2.5  la2  la1
+    save_photo = True  # decide if save the warped image
+    onlySave = True  # decide if calculate the metrics
+    model_name = "la2.5"  # la2.5  la2  la1
     json_path = "exp2/exp2.json"
     log_name = f"exp2/log/exp2_{model_name}.log"
     model_path = f"X:/Exp-New/part6_3_seg/result/{model_name}/best_part6_3_seg_B2A.pth"
     resample_name = f"exp2_{model_name}_now.nii.gz"  # _la2.5  _la2  _la1
 
-    log = Log(filename=log_name, mode="w").getlog()
+    if save_photo:
+        log = Log(filename="exp2/log/save_photo.log", mode="a").getlog()
+    else:
+        log = Log(filename=log_name, mode="w").getlog()
+
+    # only for saving photo. Remember to change the param save_photo
+    single_num = 4
+    _, _, _, _ = runSingle(single_num, "2", False, False, False, False,
+                           save_photo)
+    exit(0)
 
     # !!! Attention !!! type `0` and `1` only run once
     for num in range(1, 45):

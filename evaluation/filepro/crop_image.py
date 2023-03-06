@@ -52,7 +52,7 @@ def changeName(img_file, img_gt_file, imgrec, repname):
     """ replace name """
     img_crop_name = img_file.replace(imgrec, f"{imgrec}_{repname}")
     gt_crop_name = img_gt_file.replace("elstix", "elastix")
-    gt_crop_name = gt_crop_name.replace(imgrec, f"{imgrec}_{repname}")
+    gt_crop_name = gt_crop_name.replace(imgrec, f"{imgrec}_seg_{repname}")
     return img_crop_name, gt_crop_name
 
 
@@ -154,9 +154,9 @@ def savePtCropImg(imgnum,
 
 if __name__ == "__main__":
     data_path = "Y:/testdata/"
-    num = 4
+    num = 20
 
     # saveCtCropImg(num, "imgA", False, False, repname="ct_crop")
     # saveCtCropImg(num, "warped_part3", False, False, repname="ct_crop")
-    savePtCropImg(num, "imgA", True, True, False, repname="pt_crop")
-    savePtCropImg(num, "exp2__now", True, True, False, repname="pt_crop")
+    savePtCropImg(num, "imgA", True, False, False, repname="pt_crop")
+    savePtCropImg(num, "exp2_la2.5_now", True, False, False, repname="pt_crop")
