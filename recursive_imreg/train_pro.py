@@ -23,9 +23,10 @@ def train(model, epoch, train_iter, loss_dict, scheduler, optimizer):
         # loss_fea = losses.ssim(feaA_pro[-1], feaB_pro[-1])
         # loss = loss_BA + loss_fea
         loss_fea = 0
-        for i, j in zip(feaA_pro, feaB_pro):
-            loss_fea += losses.ssim(i, j)
-        loss = loss_BA + loss_fea / conf.n_cascades
+        sum_num = np.sum(np.arange(1, conf.n_cascades + 1))
+        for idx, (j, k) in enumerate(zip(feaA_pro, feaB_pro)):
+            loss_fea += losses.ssim(j, k)
+        loss = loss_BA + loss_fea * (idx + 1) / sum_num
 
         train_loss += loss.item()
 
@@ -57,9 +58,10 @@ def validation(model, epoch, valid_iter, loss_dict):
             # loss_fea = losses.ssim(feaA_pro[-1], feaB_pro[-1])
             # loss = loss_BA + loss_fea
             loss_fea = 0
-            for i, j in zip(feaA_pro, feaB_pro):
-                loss_fea += losses.ssim(i, j)
-            loss = loss_BA + loss_fea / conf.n_cascades
+            sum_num = np.sum(np.arange(1, conf.n_cascades + 1))
+            for idx, (j, k) in enumerate(zip(feaA_pro, feaB_pro)):
+                loss_fea += losses.ssim(j, k)
+            loss = loss_BA + loss_fea * (idx + 1) / sum_num
 
             valid_loss += loss.item()
 
@@ -85,9 +87,10 @@ def test(model, epoch, test_iter, loss_dict):
             # loss_fea = losses.ssim(feaA_pro[-1], feaB_pro[-1])
             # loss = loss_BA + loss_fea
             loss_fea = 0
-            for i, j in zip(feaA_pro, feaB_pro):
-                loss_fea += losses.ssim(i, j)
-            loss = loss_BA + loss_fea / conf.n_cascades
+            sum_num = np.sum(np.arange(1, conf.n_cascades + 1))
+            for idx, (j, k) in enumerate(zip(feaA_pro, feaB_pro)):
+                loss_fea += losses.ssim(j, k)
+            loss = loss_BA + loss_fea * (idx + 1) / sum_num
 
             test_loss += loss.item()
 
