@@ -161,6 +161,7 @@ def warp(num, net, ifsave=False):
                      save_name.replace(".nii.gz", "_crop_final.nii.gz"))
         saveNiiImage(warped, infos,
                      save_name.replace(".nii.gz", "_final.nii.gz"))
+        log.info(f"save file: {save_name} done!")
     return imgA, imgA_crop, warped_numpy, warped_gt_numpy
 
 
@@ -219,8 +220,8 @@ if __name__ == "__main__":
     # need change before running codes
     save_photo = False  # decide if save the warped image
     onlySave = False  # decide if calculate the metrics
-    n = 2
-    corr, pro = True, False
+    n = 1
+    corr, pro = False, True
     pre = "_corr" if corr else ""
     post = "_pro" if pro else ""
     model_name = f"cas{n}{pre}{post}"  # la2.5  la2  la1
@@ -229,9 +230,10 @@ if __name__ == "__main__":
     model_path = f"X:/Codes/recursive_imreg/recurse/cas{n}/cur{pre}{post}_0832/best_recurse.pth"
     resample_name = f"exp3_{model_name}_now.nii.gz"  # _la2.5  _la2  _la1
 
-    log = Log(filename=log_name, mode="w").getlog()
-    if save_photo == True:
-        log = Log(filename="exp3/log/save_photo.log", mode="w").getlog()
+    if save_photo:
+        log = Log(filename="exp3/log/save_photo.log", mode="a").getlog()
+    else:
+        log = Log(filename=log_name, mode="w").getlog()
 
     # !!! Attention !!! type `0` and `1` only run once
     for num in range(1, 45):

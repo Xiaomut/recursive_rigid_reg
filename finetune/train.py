@@ -59,25 +59,29 @@ def validation(model, recon, epoch, valid_iter, loss_dict):
     return valid_loss
 
 
-def test(model, recon, epoch, test_iter, loss_dict):
-    model.eval()
+def test(model, recon, epoch, test_iter, loss_dict, scheduler, optimizer):
     test_loss = 0
-    with torch.no_grad():
-        for i, (imgA, imgB, filedir) in enumerate(test_iter):
-            imgA, imgB, = imgA.to(device), imgB.to(device)
-            rt = model(imgA, imgB)
-            warped = recon(imgB, rt)
+    # model.eval()
+    # with torch.no_grad():
+    for i, (imgA, imgB, filedir) in enumerate(test_iter):
+        imgA, imgB, = imgA.to(device), imgB.to(device)
+        rt = model(imgA, imgB)
+        warped = recon(imgB, rt)
 
-            loss_BA = losses.pearson_correlation(imgA, warped)
+        loss_BA = losses.pearson_correlation(imgA, warped)
 
-            loss = loss_BA
-            test_loss += loss.item()
+        loss = loss_BA
+        test_loss += loss.item()
 
-            log.info(
-                f"[filedir: {filedir}][EPOCH {epoch + 1}/{conf.epochs}] [BATCH {i+1} / {len(test_iter)}] [Loss: {loss:.4f}]"
-            )
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
 
-            loss_dict['test_loss'].append(np.round(loss.item(), 4))
+        log.info(
+            f"[filedir: {filedir}][EPOCH {epoch + 1}/{conf.epochs}] [BATCH {i+1} / {len(test_iter)}] [Loss: {loss:.4f}]"
+        )
+
+        loss_dict['test_loss'].append(np.round(loss.item(), 4))
     return test_loss
 
 
@@ -95,7 +99,7 @@ def main(loadpth=None):
     for name, w in model.named_parameters():
         if "fc" in name:
             if 'weight' in name:
-                nn.init.normal_(w, std=0.001)
+                nn.init.normal_(w, std=0.0001)
             elif "bias" in name:
                 nn.init.zeros_(w)
 
@@ -109,19 +113,19 @@ def main(loadpth=None):
     for epoch in range(start_epoch, conf.epochs):
 
         # train
-        train_loss = train(model, recon, epoch, train_iter, loss_dict,
-                           scheduler, optimizer)
-        log.info(
-            f"[EPOCH {epoch + 1}/{conf.epochs}] [train Loss: {train_loss:.4f}]"
-        )
-        # valid
-        valid_loss = validation(model, recon, epoch, valid_iter, loss_dict)
-        log.info(
-            f"[EPOCH {epoch + 1}/{conf.epochs}] [valid Loss: {valid_loss:.4f}]"
-        )
+        # train_loss = train(model, recon, epoch, train_iter, loss_dict,
+        #                    scheduler, optimizer)
+        # log.info(
+        #     f"[EPOCH {epoch + 1}/{conf.epochs}] [train Loss: {train_loss:.4f}]"
+        # )
+        # # valid
+        # valid_loss = validation(model, recon, epoch, valid_iter, loss_dict)
+        # log.info(
+        #     f"[EPOCH {epoch + 1}/{conf.epochs}] [valid Loss: {valid_loss:.4f}]"
+        # )
 
         # test
-        test_loss = validation(model, recon, epoch, test_iter, loss_dict)
+        test_loss = test(model, recon, epoch, test_iter, loss_dict, scheduler, optimizer)
         log.info(
             f"[EPOCH {epoch + 1}/{conf.epochs}] [test Loss: {test_loss:.4f}]")
 
@@ -161,8 +165,8 @@ if __name__ == "__main__":
 
     # dataloads_pre
     log.info("preprocessing datas...")
-    root_dir_train = os.path.join(conf.root_path, "traindata2")
-    train_iter, valid_iter = dataloads.getDataloader(root_dir_train)
+    # root_dir_train = os.path.join(conf.root_path, "traindata2")
+    # train_iter, valid_iter = dataloads.getDataloader(root_dir_train)
     root_dir_test = os.path.join(conf.root_path, "testdata")
     test_iter = dataloads.getTestloader(root_dir_test)
     log.info("load datas done.")
