@@ -20,9 +20,12 @@ def train(model, epoch, train_iter, loss_dict, scheduler, optimizer):
             imgA, imgB, imgA_gt, imgB_gt)
         loss_BA = losses.pearson_correlation(imgA * imgA_gt,
                                              warped[-1] * warped_gt[-1])
-        loss_fea = losses.ssim(feaA_pro, feaB_pro)
-
-        loss = loss_BA + loss_fea
+        # loss_fea = losses.ssim(feaA_pro[-1], feaB_pro[-1])
+        # loss = loss_BA + loss_fea
+        loss_fea = 0
+        for i, j in zip(feaA_pro, feaB_pro):
+            loss_fea += losses.ssim(i, j)
+        loss = loss_BA + loss_fea / conf.n_cascades
 
         train_loss += loss.item()
 
@@ -51,9 +54,13 @@ def validation(model, epoch, valid_iter, loss_dict):
                 imgA, imgB, imgA_gt, imgB_gt)
             loss_BA = losses.pearson_correlation(imgA * imgA_gt,
                                                  warped[-1] * warped_gt[-1])
-            loss_fea = losses.ssim(feaA_pro, feaB_pro)
+            # loss_fea = losses.ssim(feaA_pro[-1], feaB_pro[-1])
+            # loss = loss_BA + loss_fea
+            loss_fea = 0
+            for i, j in zip(feaA_pro, feaB_pro):
+                loss_fea += losses.ssim(i, j)
+            loss = loss_BA + loss_fea / conf.n_cascades
 
-            loss = loss_BA + loss_fea
             valid_loss += loss.item()
 
             log.info(
@@ -75,9 +82,13 @@ def test(model, epoch, test_iter, loss_dict):
                 imgA, imgB, imgA_gt, imgB_gt)
             loss_BA = losses.pearson_correlation(imgA * imgA_gt,
                                                  warped[-1] * warped_gt[-1])
-            loss_fea = losses.ssim(feaA_pro, feaB_pro)
+            # loss_fea = losses.ssim(feaA_pro[-1], feaB_pro[-1])
+            # loss = loss_BA + loss_fea
+            loss_fea = 0
+            for i, j in zip(feaA_pro, feaB_pro):
+                loss_fea += losses.ssim(i, j)
+            loss = loss_BA + loss_fea / conf.n_cascades
 
-            loss = loss_BA + loss_fea
             test_loss += loss.item()
 
             log.info(
@@ -98,7 +109,9 @@ def main(loadpth=None):
         midch1=conf.channel,
         midch2=conf.channel2,
         n_cascades=conf.n_cascades,
-        model_type='1')
+        normalize_features=True,
+        normalize_matches=True,
+        model_type=model_type)
 
     trainable_params = []
     for submodel in model.stems:
@@ -164,8 +177,9 @@ def main(loadpth=None):
 if __name__ == "__main__":
 
     base_path = os.path.join(os.getcwd(), conf.save_name)
+    model_type = "0"  # 0 is corr 1is base
     result_path = os.path.join(base_path, f"cas{conf.n_cascades}",
-                               "cur_pro_0832")
+                               "cur_corr_allpro_0832")
     os.makedirs(result_path, exist_ok=True)
 
     log = Log(filename=os.path.join(result_path, "train.log"),

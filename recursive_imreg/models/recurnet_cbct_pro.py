@@ -68,6 +68,10 @@ class SpatialTransform(nn.Module):
 
 
 class RecursiveCascadeNetwork(nn.Module):
+    """
+    @param model_type: `0` is feature correlation, `1` is base model
+    @param midch2: only used in correlation
+    """
     def __init__(self,
                  n_cascades=1,
                  midch1=8,
@@ -83,11 +87,11 @@ class RecursiveCascadeNetwork(nn.Module):
         self.stems = []
         # See note in base_networks.py about the assumption in the image shape
         for i in range(n_cascades):
-            if model_type=='0':
+            if model_type == '0':
                 self.stems.append(
                     FeatureConcat(midch1, midch2, normalize_features,
                                   normalize_matches))
-            elif model_type=='1':
+            elif model_type == '1':
                 self.stems.append(VTNAffineStem(channels=midch1))
 
         for model in self.stems:
@@ -111,6 +115,7 @@ class RecursiveCascadeNetwork(nn.Module):
         # Affine registration
         theta, feaA_pro, feaB_pro = self.stems[0](fixed, moving, fixed_gt,
                                                   moving_gt)
+        feaA_pros, feaB_pros = [feaA_pro], [feaB_pro]
         stem_results = [self.reconstruction1(moving, theta)]
         stem_results_gt = [self.reconstruction2(moving_gt, theta)]
         thetas = [theta]
@@ -122,5 +127,7 @@ class RecursiveCascadeNetwork(nn.Module):
             stem_results_gt.append(
                 self.reconstruction2(stem_results_gt[-1], theta))
             thetas.append(theta)
+            feaA_pros.append(feaA_pro)
+            feaB_pros.append(feaB_pro)
 
-        return stem_results, thetas, stem_results_gt, feaA_pro, feaB_pro
+        return stem_results, thetas, stem_results_gt, feaA_pros, feaB_pros
