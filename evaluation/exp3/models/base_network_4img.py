@@ -101,3 +101,8 @@ class VTNAffineStem(nn.Module):
         rt = self.fc_loc(xs)
 
         return rt
+
+
+if __name__ == "__main__":
+    model = VTNAffineStem(8)
+    print("params: ", sum(param.numel() for param in model.parameters()))

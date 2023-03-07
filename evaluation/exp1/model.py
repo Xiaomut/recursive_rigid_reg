@@ -93,3 +93,8 @@ class Net(nn.Module):
         out = self.fc(out)
 
         return out
+
+
+if __name__ == "__main__":
+    model = Net(8, 4)
+    print("params: ", sum(param.numel() for param in model.parameters()))

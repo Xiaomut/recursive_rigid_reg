@@ -220,8 +220,8 @@ if __name__ == "__main__":
     # need change before running codes
     save_photo = False  # decide if save the warped image
     onlySave = False  # decide if calculate the metrics
-    n = 1
-    corr, pro = False, True
+    n = 3
+    corr, pro = True, False
     pre = "_corr" if corr else ""
     post = "_pro" if pro else ""
     model_name = f"cas{n}{pre}{post}"  # la2.5  la2  la1

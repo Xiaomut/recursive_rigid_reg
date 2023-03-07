@@ -5,7 +5,7 @@ import sys
 
 sys.path.append("../")
 sys.path.append("./")
-from models.cbctnet import FeatureConcat
+from exp3.models.cbctnet import FeatureConcat
 # from exp3.models.cbctnet_mul import FeatureConcat
 
 
@@ -122,22 +122,8 @@ class RecursiveCascadeNetwork(nn.Module):
 
 
 if __name__ == "__main__":
-    from torchviz import make_dot
-
-    device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
-    x1 = torch.rand(1, 1, 140, 256, 256).to(device)
-    # x2 = torch.rand(1, 1, 2, 2, 2)
-    net = FeatureConcat(8, 32).to(device)
-    print(net)
-    # net = FeaExAndCorr(2).to(device)
-    # y = net(x1, x1, x1, x1)
-    # print(y.shape)
-
-    size = (1, 1, 140, 256, 256)
-    x1 = torch.rand(size)
-    x1_gt = torch.rand(size)
-    x2 = torch.rand(size)
-    x2_gt = torch.rand(size)
-    y = net(x1, x2, x1_gt, x2_gt)
-    g = make_dot(y)
-    g.render(filename='model_struct/corrmul_model', view=False)
+    model = RecursiveCascadeNetwork(2, 8, 32, "cpu", False, False)
+    trainable_params = []
+    for submodel in model.stems:
+        trainable_params += list(submodel.parameters())
+    print("params: ", sum(param.numel() for param in trainable_params))
