@@ -55,7 +55,10 @@ def getMetrics(file=r"exp2\log\exp2_la1.log", regType='2'):
     cc_mean, cc_std = getRes(file, regType, "cc")
     gc_mean, gc_std = getRes(file, regType, "gc")
     gd_mean, gd_std = getRes(file, regType, "gd")
-    dice_mean, dice_std = getRes(file, regType, "dice")
+    try:
+        dice_mean, dice_std = getRes(file, regType, "dice")
+    except:
+        dice_mean, dice_std = "nan", "nan"
     print(f"-------------- file: [{file}] --------------")
     print(
         f"regType {regType} -> [cc: {cc_mean:.4f}, {cc_std:.4f}] -> [gc: {gc_mean:.4f}, {gc_std:.4f}] -> [gd: {gd_mean:.4f}, {gd_std:.4f}] -> [dice: {dice_mean:.4f}, {dice_std:.4f}]"
@@ -68,12 +71,15 @@ def getBaseInfo(file=r"exp2\log\exp2_.log"):
 
 
 def getExpAll(exp_num=2, regType='2'):
-    files = sorted(glob(f"exp{exp_num}/log/*.log"))[:-1]
+    files = sorted(glob(f"exp{exp_num}/log/*.log"))
     for file in files:
-        getMetrics(file, regType)
+        try:
+            getMetrics(file, regType)
+        except:
+            pass
 
 
 if __name__ == "__main__":
-    getBaseInfo("exp2/log/exp2_.log")
-    print('$' * 20)
+    # getBaseInfo("exp2/log/exp2_.log")
+    # print('$' * 20)
     getExpAll(3, '2')
