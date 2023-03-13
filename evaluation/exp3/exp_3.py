@@ -194,8 +194,8 @@ def runSingle(num,
 
     coorA, _ = getCoord(num)
     # crop image and get TMJ
-    imgA_input = imgA  # * gt_imgA
-    imgB_input = imgB  # * gt_imgB
+    imgA_input = imgA * gt_imgA
+    imgB_input = imgB * gt_imgB
     imgA_crop = imgToTensor(cropImageByPointTest(imgA_input, coorA, limit))
     gt_imgA_crop = imgToTensor(cropImageByPointTest(gt_imgA, coorA, limit))
     imgB_crop = imgToTensor(cropImageByPointTest(imgB_input, coorA, limit))
@@ -218,13 +218,14 @@ if __name__ == "__main__":
     limit = [200, -60, 128, 128, 128, 128]
 
     # need change before running codes
-    save_photo = False  # decide if save the warped image
-    onlySave = False  # decide if calculate the metrics
+    save_photo = True  # decide if save the warped image
+    onlySave = True  # decide if calculate the metrics
     n = 3
     corr, pro = True, False
     pre = "_corr" if corr else ""
     post = "_pro" if pro else ""
-    model_name = f"cas{n}{pre}{post}"  # la2.5  la2  la1
+    model_name = f"cas{n}{pre}{post}"
+    # model_name = "cas1_corr_low"  #
     json_path = "exp3/exp3.json"
     log_name = f"exp3/log/{model_name}.log"
     model_path = f"X:/Codes/recursive_imreg/recurse/cas{n}/cur{pre}{post}_0832/best_recurse.pth"
@@ -235,12 +236,16 @@ if __name__ == "__main__":
     else:
         log = Log(filename=log_name, mode="w").getlog()
 
+    single_num = 4
+    _, _, _, _ = runSingle(single_num, n, "2", False, False, False, False,
+                           save_photo)
+    exit(0)
     # !!! Attention !!! type `0` and `1` only run once
     for num in range(1, 45):
         calCC, calGC, calGD, calDice = True, True, True, True
-        # m_cc1, m_gc1, m_gd1, m_dice1 = runSingle(num, n, "0", calCC, calGC, calGD,
-        #                                          calDice)
-        # m_cc2, m_gc2, m_gd2, m_dice2 = runSingle(num, n, "1", calCC, calGC, calGD,
-        #                                          calDice)
+        # m_cc1, m_gc1, m_gd1, m_dice1 = runSingle(num, n, "0", calCC, calGC,
+        #                                          calGD, calDice)
+        # m_cc2, m_gc2, m_gd2, m_dice2 = runSingle(num, n, "1", calCC, calGC,
+        #                                          calGD, calDice)
         m_cc3, m_gc3, m_gd3, m_dice3 = runSingle(num, n, "2", calCC, calGC,
                                                  calGD, calDice, onlySave)

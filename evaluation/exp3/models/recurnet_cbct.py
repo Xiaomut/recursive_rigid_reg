@@ -122,8 +122,8 @@ class RecursiveCascadeNetwork(nn.Module):
 
 
 if __name__ == "__main__":
-    model = RecursiveCascadeNetwork(2, 8, 32, "cpu", False, False)
+    model = RecursiveCascadeNetwork(1, 8, 32, "cpu", False, False)
     trainable_params = []
     for submodel in model.stems:
-        trainable_params += list(submodel.parameters())
-    print("params: ", sum(param.numel() for param in trainable_params))
+        trainable_params += list(submodel.parameters()) 
+    print("params: ", sum(param.numel() for param in trainable_params)) 

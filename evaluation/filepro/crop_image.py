@@ -50,9 +50,8 @@ def loadImg(imgnum, imgrec):
 
 def changeName(img_file, img_gt_file, imgrec, repname):
     """ replace name """
-    img_crop_name = img_file.replace(imgrec, f"{imgrec}_{repname}")
-    gt_crop_name = img_gt_file.replace("elstix", "elastix")
-    gt_crop_name = gt_crop_name.replace(imgrec, f"{imgrec}_seg_{repname}")
+    img_crop_name = img_file.replace(".nii.gz", f"_{repname}.nii.gz")
+    gt_crop_name = img_gt_file.replace(".nii.gz", f"_{repname}.nii.gz")
     return img_crop_name, gt_crop_name
 
 
@@ -154,9 +153,16 @@ def savePtCropImg(imgnum,
 
 if __name__ == "__main__":
     data_path = "Y:/testdata/"
-    num = 20
+    num = 4
 
     # saveCtCropImg(num, "imgA", False, False, repname="ct_crop")
     # saveCtCropImg(num, "warped_part3", False, False, repname="ct_crop")
-    savePtCropImg(num, "imgA", True, False, False, repname="pt_crop")
-    savePtCropImg(num, "exp2_la2.5_now", True, False, False, repname="pt_crop")
+    # savePtCropImg(num, "imgA", True, True, True, repname="pt_crop")
+    # savePtCropImg(num, "imgB", True, True, True, repname="pt_crop")
+    savePtCropImg(num,
+                  "exp2_finetune_now",
+                  True,
+                  True,
+                  True,
+                  repname="pt_crop")
+    savePtCropImg(num, "exp2_la2.5_now", True, True, True, repname="pt_crop")

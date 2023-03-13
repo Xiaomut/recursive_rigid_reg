@@ -50,7 +50,7 @@ class FeatureExtraction(nn.Module):
         x5_1_A = self.conv5_1(x5_A)  # [b, channal * 16, 5, 8, 8]
         x6_A = self.conv6(x5_1_A)  # [b, channal * 32, 3, 4, 4]
         x6_1_A = self.conv6_1(x6_A)  # [b, channal * 32, 3, 4, 4]
-        # x7_A = self.conv7(x6_1_A)  # [b, channal * 32, 2, 2, 2]
+        x7_A = self.conv7(x6_1_A)  # [b, channal * 32, 2, 2, 2]
 
         return x6_1_A
 
