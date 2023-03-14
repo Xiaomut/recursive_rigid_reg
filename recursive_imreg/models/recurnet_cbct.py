@@ -5,8 +5,8 @@ import sys
 
 sys.path.append("../")
 sys.path.append("./")
-# from models.cbctnet import FeatureConcat
-from models.cbctnet_mul import FeatureConcat
+from models.cbctnet import FeatureConcat
+# from models.cbctnet_mul import FeatureConcat
 
 
 class SpatialTransform(nn.Module):
@@ -105,18 +105,20 @@ class RecursiveCascadeNetwork(nn.Module):
     def forward(self, fixed, moving, fixed_gt, moving_gt):
 
         # Affine registration
-        theta = self.stems[0](fixed, moving, fixed_gt, moving_gt)
+        theta, corr = self.stems[0](fixed, moving, fixed_gt, moving_gt)
         stem_results = [self.reconstruction1(moving, theta)]
         stem_results_gt = [self.reconstruction2(moving_gt, theta)]
         thetas = [theta]
+        corrs = [corr]
         for model in self.stems[1:]:  # cascades
             # registration between the fixed and the warped from last cascade
-            theta = model(fixed, stem_results[-1], fixed_gt,
-                          stem_results_gt[-1])
+            theta, corr = model(fixed, stem_results[-1], fixed_gt,
+                                stem_results_gt[-1])
             stem_results.append(self.reconstruction1(stem_results[-1], theta))
             stem_results_gt.append(
                 self.reconstruction2(stem_results_gt[-1], theta))
             thetas.append(theta)
+            corrs.append(corr)
 
         return stem_results, thetas, stem_results_gt
 

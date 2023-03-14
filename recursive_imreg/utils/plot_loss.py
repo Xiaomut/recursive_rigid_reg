@@ -25,7 +25,9 @@ def getInfos(logfile):
     train_x, train_y = getMinNum(train_sum)
     valid_x, valid_y = getMinNum(valid_sum)
     test_x, test_y = getMinNum(test_sum)
-    print(f"[file]: {logfile} -> [train]: {(train_x, train_y)}  -> [valid]: {(valid_x, valid_y)}  -> [test]: {(test_x, test_y)}")
+    print(
+        f"[file]: {logfile} -> [train]: {(train_x, train_y)}  -> [valid]: {(valid_x, valid_y)}  -> [test]: {(test_x, test_y)}"
+    )
     return {
         "train": train_sum,
         "valid": valid_sum,
@@ -36,13 +38,12 @@ def getInfos(logfile):
     }
 
 
-def plotLog(files):
+def plotLog(files, labels=["origin", "fea_corr", "histq_corr"]):
     """ 由log文件生成loss图像 """
 
     figs, ax = plt.subplots(1, 3)
 
-    for idx, (file, label) in enumerate(
-            zip(files, ["origin", "fea_corr", "histq_corr"])):
+    for idx, (file, label) in enumerate(zip(files, labels)):
         infos = getInfos(file)
         ax[0].plot(range(len(infos["train"])), infos["train"], label=label)
         ax[0].set_title("Train Loss")
@@ -65,10 +66,16 @@ def plotLog(files):
 
 if __name__ == "__main__":
     files = [
-        # r"recurse\cas3\ori_8\train.log",
-        # r"recurse\cas3\fullhis_corr_8\train.log",
-        r"recurse\cas3\ori_corr_8\train.log",
+        r"recurse\cas1\cur_0832\train.log",
+        r"recurse\cas1\cur_corr_0832\train.log",
+        r"recurse\cas1\cur_corr_pro_0832\train.log",
+        # r"recurse\cas4\ori_corr_8\train.log",
+        # r"recurse\cas5\ori_corr_0832\train.log"
     ]
+    # labels = ["origin", "fea_corr", "histq_corr"]
+    # labels = ["cas3", "cas4", "cas5"]
+    # labels = ["origin-0832", "corr_0832", "corr_pro_0832"]
+    labels = ["origin-0832", "corr_0832", "corr_pro_0832"]
     # for file in files:
     #     plotLog(file, '1')
-    plotLog(files)
+    plotLog(files, labels)

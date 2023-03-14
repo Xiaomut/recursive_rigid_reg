@@ -98,8 +98,19 @@ def contract(num=1):
 
 if __name__ == "__main__":
 
+    # get init image metric
+    # getMetrics("files/init.log", regType='m')
+
     # contract diff scale fcc
     # getExpAll(3, 'cas1_*', '2')
     
-    getMetrics(3, 'cas1_*', '2')
     # contract(3)
+    text = loadlog(r"exp3\log\cas3_corr.log")
+    res = extractCC(text)
+    print(len(res))
+    n = 0
+    for i, r in enumerate(res):
+        if r > 0.90:
+            n += 1
+            print(i+1)
+    print(n)

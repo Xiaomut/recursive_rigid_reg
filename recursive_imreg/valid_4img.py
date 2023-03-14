@@ -7,6 +7,7 @@ from utils.image_util import invMatrix, decomposeMatrixDegree, composeMatrixFrom
 from utils.base_util import readNiiImage, saveNiiImage, loadJson, resampleNiiImg
 from config import Config as conf
 from models import recurnet_4img, recurnet_cbct
+from utils.plot_corr import plotCorr
 
 
 def getOriThetas(rts, coorA, coorB, shape1, shape2):
@@ -89,48 +90,52 @@ def validation(filenum, datadir="testdata", ifsave=False):
 
     stem_results, thetas, stem_results_gt = net(imgA_tensor, imgB_tensor,
                                                 imgA_gt_tensor, imgB_gt_tensor)
+    # plotCorr(corrs[-1])
     log.info([theta.detach() for theta in thetas])
     save_name = os.path.join(base_dir, resample_name)
     if ifsave:
         thetas_ori = getOriThetas(thetas, coorA, coorB, imgA.shape,
                                   imgB_crop.shape)
         warped = imgB_ori_tensor
+        warped_gt = torch.FloatTensor(gt_imgB).unsqueeze(0).unsqueeze(0)
         for i, (stem_result, theta_o, stem_result_gt) in enumerate(
                 zip(stem_results, thetas_ori, stem_results_gt)):
             # 需要将其相乘进行存储
-            warped_gt = (stem_result *
-                         stem_result_gt).squeeze(0).squeeze(0).cpu().detach()
-            # 保存被一个阶段的图像
-            # saveNiiImage(warped_gt.numpy(), infos, save_name.replace(".nii.gz", f"_crop_{nums}{i+1}.nii.gz"))
-            # warped = resampleNiiImg(theta_o, warped, infos, save_name.replace(".nii.gz", f"_{nums}{i+1}.nii.gz"))
-            # 只保存最后的图像
-            warped = resampleNiiImg(theta_o, warped, infos)
-        warped = warped.type(torch.ShortTensor).squeeze().squeeze().numpy()
-        saveNiiImage(warped_gt.numpy(), infos,
-                     save_name.replace(".nii.gz", "_crop_final.nii.gz"))
-        saveNiiImage(warped, infos,
-                     save_name.replace(".nii.gz", "_final.nii.gz"))
+            # warped_gt = (stem_result *
+            #              stem_result_gt).squeeze(0).squeeze(0).cpu().detach()
+            # # 保存被一个阶段的图像
+            # saveNiiImage(warped_gt.numpy(), infos,
+            #              save_name.replace(".nii.gz", f"_crop_{i+1}.nii.gz"))
+            warped = resampleNiiImg(
+                theta_o, warped, infos,
+                save_name.replace(".nii.gz", f"_{i+1}.nii.gz"))
+            warped_gt = resampleNiiImg(theta_o,
+                                       warped_gt,
+                                       infos,
+                                       save_name.replace(
+                                           ".nii.gz", f"_gt_{i+1}.nii.gz"),
+                                       mode="nearest")
 
 
 if __name__ == "__main__":
 
-    model_path = r"recurse\cas3\ori_corr_0832\best_recurse.pth"
+    model_path = r"recurse\cas3\cur_corr_0832\best_recurse.pth"
     state_dict = torch.load(model_path, map_location="cpu")
 
     device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
     # model = recurnet_4img.RecursiveCascadeNetwork(conf.n_cascades,
     #                                               conf.channel, device,
     #                                               state_dict, True)
-    net = recurnet_cbct.RecursiveCascadeNetwork(conf.n_cascades, 8, 32, device,
-                                                True, True, state_dict, True)
+    net = recurnet_cbct.RecursiveCascadeNetwork(3, 8, 32, device, True, True,
+                                                state_dict, True)
 
     log = Log(filename=f"{conf.save_name}/valid/validation.log",
               mode="a").getlog()
     log.info(f"------- {model_path} -------")
-    log.info(state_dict["epoch"])
-    resample_name = f"warped_{conf.save_name}.nii.gz"
+    # log.info(state_dict["epoch"])
+    resample_name = "exp3_cas3_corr_now.nii.gz"
 
-    for filenum in range(26, 28):
-        validation(filenum, datadir="testdata", ifsave=True)
+    # for filenum in range(26, 28):
+    #     validation(filenum, datadir="testdata", ifsave=True)
 
-    # validation(83, datadir="traindata2", ifsave=False)
+    validation(31, datadir="testdata", ifsave=True)
