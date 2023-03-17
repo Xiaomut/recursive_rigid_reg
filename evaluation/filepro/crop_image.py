@@ -155,14 +155,8 @@ if __name__ == "__main__":
     data_path = "Y:/testdata/"
     num = 4
 
-    # saveCtCropImg(num, "imgA", False, False, repname="ct_crop")
-    # saveCtCropImg(num, "warped_part3", False, False, repname="ct_crop")
+    saveCtCropImg(num, "imgA", False, False, repname="ct_crop")
+    saveCtCropImg(num, "warped_part3", False, False, repname="ct_crop")
     # savePtCropImg(num, "imgA", True, True, True, repname="pt_crop")
     # savePtCropImg(num, "imgB", True, True, True, repname="pt_crop")
-    savePtCropImg(num,
-                  "exp2_finetune_now",
-                  True,
-                  True,
-                  True,
-                  repname="pt_crop")
-    savePtCropImg(num, "exp2_la2.5_now", True, True, True, repname="pt_crop")
+    # savePtCropImg(num, "exp2_la2.5_now", True, True, True, repname="pt_crop")

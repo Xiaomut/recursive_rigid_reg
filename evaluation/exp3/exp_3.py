@@ -232,11 +232,11 @@ if __name__ == "__main__":
     resample_name = f"exp3_{model_name}_now.nii.gz"  # _la2.5  _la2  _la1
 
     if save_photo:
-        log = Log(filename="exp3/log/save_photo.log", mode="a").getlog()
+        log = Log(filename="exp3/log_pre/save_photo.log", mode="a").getlog()
     else:
         log = Log(filename=log_name, mode="w").getlog()
 
-    single_num = 4
+    single_num = 36
     _, _, _, _ = runSingle(single_num, n, "2", False, False, False, False,
                            save_photo)
     exit(0)

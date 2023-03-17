@@ -90,6 +90,7 @@ def contract(num=1):
         getBaseInfo("exp1/log/exp1.log")
     elif num == 2 or num == 3:
         getBaseInfo("exp2/log/exp2_.log")
+        getBaseInfo("exp3/log_pre/exp3_base.log")
     # elif num == 3:
     #     getBaseInfo("exp3/exp3_base.log")
     print('$' * 20)
@@ -103,14 +104,14 @@ if __name__ == "__main__":
 
     # contract diff scale fcc
     # getExpAll(3, 'cas1_*', '2')
-    
-    # contract(3)
-    text = loadlog(r"exp3\log\cas3_corr.log")
-    res = extractCC(text)
-    print(len(res))
-    n = 0
-    for i, r in enumerate(res):
-        if r > 0.90:
-            n += 1
-            print(i+1)
-    print(n)
+
+    contract(3)
+    # text = loadlog(r"exp3\log\cas3_corr.log")
+    # res = extractCC(text)
+    # print(len(res))
+    # n = 0
+    # for i, r in enumerate(res):
+    #     if r > 0.90:
+    #         n += 1
+    #         print(i+1)
+    # print(n)
