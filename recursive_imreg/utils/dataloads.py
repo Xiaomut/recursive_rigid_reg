@@ -23,8 +23,7 @@ class DatasetPtCrop(data.Dataset):
     def __len__(self):
         return len(self.image_dirs)
 
-    def getBaseInfo(self):
-        file = "/home/wangs/base_imgs/base.nii.gz"  # _crop
+    def getBaseInfo(self, file="/home/wangs/base_imgs/base.nii.gz"):
         template = readNiiImage(file)
         nt_data_array = template.ravel()
         t_values, t_counts = np.unique(nt_data_array, return_counts=True)
@@ -35,8 +34,8 @@ class DatasetPtCrop(data.Dataset):
     def __getitem__(self, index):
         base_dir = os.path.expanduser(self.image_dirs[index])
         filenum = os.path.basename(base_dir)
-        imgA = readNiiImage(os.path.join(base_dir, "imgA_his.nii.gz"))
-        imgB = readNiiImage(os.path.join(base_dir, "imgB_his.nii.gz"))
+        imgA = readNiiImage(os.path.join(base_dir, "imgA.nii.gz"))  # _his
+        imgB = readNiiImage(os.path.join(base_dir, "imgB.nii.gz"))
         # imgA = histForTrain(self.t_quantiles, self.t_values, imgA)
         # imgB = histForTrain(self.t_quantiles, self.t_values, imgB)
         imgA_gt = readNiiImage(os.path.join(base_dir, "gt_imgA.nii.gz"))
@@ -52,7 +51,7 @@ class DatasetPtCrop(data.Dataset):
         imgB_crop = cropImageByPoint(imgB, coorB, self.limit)
         # histequal
         # imgA_crop = histForTrain(self.t_quantiles, self.t_values, imgA_crop)
-        # imgB_crop = histForTrain(self.t_quantiles, self.t_values, imgB_crop)
+        # imgB_crop = matching(imgA_crop, imgB_crop)
 
         imgA_gt_crop = cropImageByPoint(imgA_gt, coorA, self.limit)
         imgB_gt_crop = cropImageByPoint(imgB_gt, coorB, self.limit)
@@ -70,8 +69,9 @@ class DatasetPtCrop(data.Dataset):
 def getDataloader(root_dir):
     """ pt_mode: `norch` or `condyle` """
     image_dirs = getImageDirs(root_dir)
-    image_dirs.remove(os.path.join(root_dir, "img54"))
-    image_dirs.remove(os.path.join(root_dir, "img64"))
+
+    for i in [54, 64]:  # , 13, 41, 43, 67, 73, 112, 113
+        image_dirs.remove(os.path.join(root_dir, f"img{i}"))
 
     random.shuffle(image_dirs)
     ratio = int(0.8 * len(image_dirs))
@@ -79,8 +79,8 @@ def getDataloader(root_dir):
     X_test = image_dirs[ratio:]
 
     r = loadJson("files/train_coordinate.json")
-    # limit = [220, -80, 128, 128, 128, 128]
     limit = [200, -60, 128, 128, 128, 128]
+    # limit = [200, -60, 196, 128, 128, 128]
 
     params_train = {
         'batch_size': conf.batch_size,
@@ -100,6 +100,7 @@ def getTestloader(root_dir="/home/wangs/testdata"):
 
     r = loadJson("files/test_coordinate.json")
     limit = [200, -60, 128, 128, 128, 128]
+    # limit = [200, -60, 196, 128, 128, 128]
 
     params_test = {
         'batch_size': conf.batch_size,

@@ -17,7 +17,7 @@ class Config:
     step_size = 10
     gamma = 0.96  # 学习率衰减因子
 
-    n_cascades = 3
+    n_cascades = 1
     batch_size = 1
     channel = 8
     channel2 = 32

@@ -5,7 +5,7 @@ from torch.optim import lr_scheduler, Adam, SGD, RMSprop
 import numpy as np
 from log import Log
 from utils import losses, dataloads, dataloads_pre
-from models import recurnet, recurnet_4img, recurnet_cbct
+from models import recurnet_4img, recurnet_cbct
 from config import Config as conf
 
 
@@ -17,10 +17,11 @@ def train(model, epoch, train_iter, loss_dict, scheduler, optimizer):
         imgA, imgB, = imgA.to(device), imgB.to(device)
         imgA_gt, imgB_gt = imgA_gt.to(device), imgB_gt.to(device)
         warped, flows, warped_gt = model(imgA, imgB, imgA_gt, imgB_gt)
-        if i % 5 == 0:
-            print(flows)
+        # if i % 5 == 0:
+        #     print(flows)
         loss_BA = losses.pearson_correlation(imgA * imgA_gt,
                                              warped[-1] * warped_gt[-1])
+        # loss_BA = losses.pearson_correlation(imgA, warped[-1])
 
         loss = loss_BA
 
@@ -51,6 +52,7 @@ def validation(model, epoch, valid_iter, loss_dict):
 
             loss_BA = losses.pearson_correlation(imgA * imgA_gt,
                                                  warped[-1] * warped_gt[-1])
+            # loss_BA = losses.pearson_correlation(imgA, warped[-1])
 
             loss = loss_BA
             valid_loss += loss.item()
@@ -74,6 +76,7 @@ def test(model, epoch, test_iter, loss_dict):
 
             loss_BA = losses.pearson_correlation(imgA * imgA_gt,
                                                  warped[-1] * warped_gt[-1])
+            # loss_BA = losses.pearson_correlation(imgA, warped[-1])
 
             loss = loss_BA
             test_loss += loss.item()
@@ -97,6 +100,8 @@ def main(loadpth=None):
     model = recurnet_cbct.RecursiveCascadeNetwork(device=device,
                                                   midch1=conf.channel,
                                                   midch2=conf.channel2,
+                                                  normalize_features=True,
+                                                  normalize_matches=True,
                                                   n_cascades=conf.n_cascades)
 
     trainable_params = []
@@ -105,7 +110,7 @@ def main(loadpth=None):
 
     if loadpth is None:
         log.info(conf.getinfo())
-        optimizer = Adam(trainable_params, lr=conf.lr)  #, betas=(0.5, 0.999)
+        optimizer = Adam(trainable_params, lr=conf.lr, betas=(0.5, 0.999))  #
         scheduler = lr_scheduler.StepLR(optimizer, conf.step_size, conf.gamma)
         # scheduler = lr_scheduler.CosineAnnealingWarmRestarts(optimizer, 2, 5)
     else:
@@ -163,11 +168,12 @@ def main(loadpth=None):
 if __name__ == "__main__":
 
     base_path = os.path.join(os.getcwd(), conf.save_name)
-    result_path = os.path.join(base_path, f"cas{conf.n_cascades}", "ori_8")
+    result_path = os.path.join(base_path, f"cas{conf.n_cascades}",
+                               "cur_0832")
     os.makedirs(result_path, exist_ok=True)
 
     log = Log(filename=os.path.join(result_path, "train.log"),
-              mode="w").getlog()
+              mode="a").getlog()
     bestpth_name = os.path.join(result_path, f"best_{conf.save_name}.pth")
     device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
 
